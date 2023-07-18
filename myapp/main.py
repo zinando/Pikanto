@@ -98,38 +98,15 @@ class Pikanto(ctk.CTk):
 
 	def show_scale_data(self):
 		"""Retrieves the reading on the scale with the set port number"""
-		port = '/dev/ttyUSB0' #self.port_number #
+		port = '/COM3'
 		baudrate = 9600
 		parity = serial.PARITY_NONE
 		stopbits = serial.STOPBITS_ONE
 		bytesize = serial.EIGHTBITS
-
-		try:
-		    temp = serial.Serial(port, baudrate, bytesize, parity, stopbits)		    
-		    # Flush both input/output buffer.
-		    temp.reset_input_buffer()
-		    temp.reset_output_buffer()
-		    temp.close()
-		except:			
-		    self.update_status('Unable to open/clean ' + port + ':' + str(baudrate))
-		    return
-
-		with serial.Serial(port, baud, bytesize, parity, stopbits) as ser:		    	           
-			# Only read data if there are bytes already waiting in the buffer.
-			if ser.in_waiting > 0:
-				time.sleep(0.1)
-				#continue
-			#We got bytes, read them.
-			x = ser.readline()	        
-			self.weight_data = None
-			time.sleep(0.1)			
-			self.weight_data = x
-			self.update()
-			self.display_data(self.weight_data)
-	        #print(x)	            
-
 		
-
+		val = func.get_mass()
+		self.display_data(val) 
+  
 		return
 	def update_status(self,message):
 		"""Pauses animation message on the status display and displays message"""
