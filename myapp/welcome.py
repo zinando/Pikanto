@@ -1,7 +1,7 @@
 """This is the welcome page class module"""
 import customtkinter as ctk
 from appclasses.labelclass import MyLabel
-from helpers  import myfunctions as func
+from helpers import myfunctions as func
 import os
 
 
@@ -61,4 +61,4 @@ class Welcome(ctk.CTk):
 
 if __name__ == "__main__":
 	app = Welcome()
-	app.mainloop()		
+	app.mainloop()

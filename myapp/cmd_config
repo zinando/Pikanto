@@ -1,0 +1,8 @@
+cd Pikanto
+virtual\Scripts\activate
+cd myapp
+python main.py
+
+
+ngrok auth token: 2Y6SuWkvxplGzPgYbZbVOWiZeDK_5pj28eyQLNQGR1CqFodjy
+path to config file: C:\Users\user\.ngrok2\ngrok.yml
