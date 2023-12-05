@@ -24,26 +24,36 @@ class User(UserMixin, db.Model):
     activatecode = db.Column(db.String(255), nullable=True)
     last_activation_code_time = db.Column(db.DateTime(), nullable=True)
 
+class Haulier(db.Model):
+    __tablename__ = 'transport_company'
+
+    hid = db.Column(db.Integer, primary_key=True)
+    company_name = db.Column(db.String(50))
+    address = db.Column(db.String(50))
+    registration_number = db.Column(db.String(50))
+    reg = db.Column(db.DateTime, default=func.now())
+    transactions = db.relationship('WeightLog', backref='haulier', lazy='dynamic')
+
 
 class WeightLog(db.Model):
     """this holds weight information for each weighing activity"""
-
-    __tablename__ = "student_class"
+    __tablename__ = "weight_log"
 
     wid = db.Column(db.Integer, primary_key=True)
-    vehicle_id = db.Column(db.String(50), nullable=False, unique=True)
+    vehicle_id = db.Column(db.String(50), nullable=False, unique=True)  # plate number
+    haulier_id = db.Column(db.Integer, db.ForeignKey('transport_company.hid'))
     vehicle_name = db.Column(db.String(50))
+    driver_name = db.Column(db.String(50))
     initial_weight = db.Column(db.Integer, nullable=True)  # weight in grams
     initial_time = db.Column(db.DateTime(), default=func.now())
     final_weight = db.Column(db.Integer, nullable=True)  # weight in grams
     final_time = db.Column(db.DateTime())
-    # subjects = db.relationship("Subjects", backref="cohort")
 
 
 class ReportLog(db.Model):
     """This is the report model"""
 
-    __tablename__ = "subjects"
+    __tablename__ = "report_log"
 
     rid = db.Column(db.Integer, primary_key=True)
     report_date = db.Column(db.DateTime(), default=func.now())

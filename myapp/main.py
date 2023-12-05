@@ -1,456 +1,621 @@
 """This is the main application window module"""
-import customtkinter as ctk
 from appclasses.labelclass import MyLabel
 from appclasses.email_class import SendMail
+from appclasses.views import CreateAppView
+from appclasses.more_views import WindowViews
 from appclasses.buttonclass import MyButton
-from appclasses.frameclass import MyFrame
+from appclasses.textbox_class import MyTexBox
 from helpers import myfunctions as func
 from threading import Thread
 from server.extensions import db, app
-from pyngrok import ngrok
-import requests
-import os
+import customtkinter as ctk
+from functools import partial
+from appclasses.toplevel_class import DialogueBox
+from appclasses.report_messenger import Messenger
+from appclasses.dotdict_class import DotDict
+from appclasses.group_class import SubGroupCreator
 import time
-import random
-import serial
 
 
-class Pikanto(ctk.CTk):
+class Pikanto(WindowViews):
     """This creates an instance of the Pikanto app main window"""
 
     def __init__(self):
+        """inherit the properties of CreateAppView class"""
         super(Pikanto, self).__init__()
-        self.buffer_text = None
-        self.state_objects = {}
-        self.port_number = None
-        self.status_message = None
-        self.unit = "Kg"
-        self.weight_data = None
-        self.resizable(False, False)
-        width, height = 1000, 600
-        self.w, self.h = width, height
-        position_x = (self.winfo_screenwidth() // 2) - (width // 2)
-        position_y = (self.winfo_screenheight() // 2) - (height // 2)
-        self.geometry("{}x{}+{}+{}".format(width, height, position_x, position_y))
-        self.iconbitmap('assets/icons/app_icon.ico')
-        self.title('Pikanto - logistics weight station data manager')
+        self.toplevel_window = None
+        self.selected_value = {}
+        self.create_base_view()
 
-        #  Labels. These are spaces that contain buttons of used to display data
-
-        #  main label. This contains everything visible in the main window
-        bg_label = MyLabel(self, text="", bg_color="#2f6c60", fg_color="#2f6c60", height=height,
-                           width=width).create_obj()
-        bg_label.place(x=0, y=0)
-
-        #  Ngrok (server) label
-        x = 20 + 10 + 100
-        y = 10
-        server_label = MyLabel(bg_label, text="", bg_color="#2f6c60", fg_color="#2f6c60", height=60, width=100,
-                               x=x, y=y).create_obj()
-        server_label.place(x=x, y=y)
-
-        #  server title text
-        server_text_label = MyLabel(server_label, text="server", bg_color="#2f6c60", fg_color="#ffffff", height=15,
-                                    text_color="#6699cc", font_size=10, font="Silkscreen", width=100, x=0, y=0) \
-            .create_obj()
-        server_text_label.place(x=0, y=0)
-
-        # indicator area
-        h, w = 20, int(server_label.cget('width'))
-        x, y = server_text_label.position_x, server_text_label.position_y + int(server_text_label.cget('height'))
-        indicator = self.create_server_indicator_objects(server_label, w, h, x, y)
-
-        # server start/stop button label
-        w = int(server_label.cget('width'))
-        h = int(server_label.cget('height')) - int(server_text_label.cget('height')) - int(indicator.cget('height'))
-        x = indicator.position_x
-        y = indicator.position_y + int(indicator.cget('height'))
-        server_button_label = MyLabel(server_label, text="server", bg_color="#2f6c60", fg_color="#2f6c60", height=h,
-                                      width=w, x=x, y=y) \
-            .create_obj()
-        server_button_label.place(x=x, y=y)
-
-        #  action status
-        status_report_label_text = MyLabel(bg_label, text="Action Status:", text_color="#6699cc", font_size=14,
-                                           font="Silkscreen", bg_color="#2f6c60", fg_color="#2f6c60", height=40,
-                                           width=118, x=270, y=10).create_obj()
-        status_report_label_text.place(x=270, y=10)
-
-        #  status display area
-        d_x = func.addspace(status_report_label_text.position_x, int(status_report_label_text.cget("width"))) + 10
-        d_y = status_report_label_text.position_y - 5
-        w = width - 290 - int(status_report_label_text.cget("width"))
-        h = int(status_report_label_text.cget("height")) + 10
-        status_report_label = MyLabel(bg_label, text="", text_color="#ffffff", bg_color="#2f6c60", fg_color="#25564c",
-                                      height=h, x=d_x, y=d_y, width=w).create_obj()
-        status_report_label.place(x=d_x, y=d_y)
-        self.status_report_display = status_report_label
-
-        #  main display label area in white fg
-        d_y = func.addspace(status_report_label.position_y, int(status_report_label.cget("height"))) + 5
-        d_x = status_report_label_text.position_x
-        h = height - 100
-        w = width - 280
-        self.display_label = MyLabel(self, text="", bg_color="#2f6c60", fg_color="#ffffff", height=h,
-                                     width=w, x=d_x, y=d_y).create_obj()
-        self.display_label.place(x=d_x, y=d_y)
-
-        #  display for weight inside main display label in cream fg
-        w = int(status_report_label.cget("width")) + 40
-        h = int(status_report_label.cget("height"))
-        x = (int(self.display_label.cget("width")) - w) // 2
-        d_y = 5
-        self.data_display_label = MyLabel(self.display_label, text="0.0 kg", font_size=22, text_color="#2f6c60",
-                                          bg_color="#ffffff",
-                                          fg_color="#f5f5f5", height=h, width=w, x=d_x, y=d_y).create_obj()
-        self.data_display_label.place(x=x, y=d_y)
-
-        #  read data button area label
-        y = func.addspace(10, 50) + 40
-        x = 20
-        data_manipulation_btns_label = MyLabel(self, text="", bg_color="#2f6c60", fg_color="#25564c", height=100,
-                                               width=230, x=x, y=y).create_obj()
-        data_manipulation_btns_label.place(x=x, y=y)
-
-        #  report buttons label
-        y = 40 + func.addspace(data_manipulation_btns_label.position_y,
-                               int(data_manipulation_btns_label.cget("height")))
-        x = 20
-        request_btns_label = MyLabel(self, text="", bg_color="#2f6c60", fg_color="#25564c", height=100,
-                                     width=230, x=x, y=y).create_obj()
-        request_btns_label.place(x=x, y=y)
-
-        #  tutorial labels
-        y = func.addspace(request_btns_label.position_y, int(request_btns_label.cget("height"))) + 40
-        x = request_btns_label.position_x
-        tutorial_btns_label = MyLabel(self, text="", bg_color="#2f6c60", fg_color="#25564c", height=150,
-                                      width=250, x=x, y=y).create_obj()
-        tutorial_btns_label.place(x=x - 10, y=y)
-
-        #  tutorial labels title
-        y = 0
-        x = 0
-        w = int(tutorial_btns_label.cget("width"))
-        tutorial_btns_label_title = MyLabel(tutorial_btns_label, text="TUTORIALS", bg_color="#2f6c60",
-                                            fg_color="#25564c", height=30, text_color="#ffffff", width=w, x=x, y=y) \
-            .create_obj()
-        tutorial_btns_label_title.place(x=x, y=y)
-
-        #  buttons
-
-        #  settings button
-        settings_btn = MyButton(self, text="Settings", command=self.open_settings_form, font_size=16,
-                                font_weight="bold", text_color="#000000", bg_color="#2f6c60", fg_color="#6699cc",
-                                height=50, width=100, x=20, y=10).create_obj()
-        settings_btn.place(x=20, y=10)
-
-        # server start/stop button
-        h = int(server_button_label.cget('height')) - 4
-        w = int(server_button_label.cget('width')) - 4
-        x, y = 2, 2
-        server_btn = MyButton(server_button_label, text="Start Server", command=self.start_ngrok, font_size=13,
-                              text_color="#ffffff", bg_color="#2f6c60", fg_color="#0080ff", corner_radius=0,
-                              height=h, width=w, x=x, y=y).create_obj()
-        server_btn.place(x=x, y=y)
-        self.state_objects['server_button'] = server_btn
-
-        # read data button
-        h = (int(data_manipulation_btns_label.cget("height")) - 15) // 2
-        w = (int(data_manipulation_btns_label.cget("width")) - 15) // 2
-        x = 5
-        y = 5
-        read_data_btn = MyButton(data_manipulation_btns_label, text="Read Data", command=self.show_scale_data,
-                                 font_size=14,
-                                 text_color="#ffbf00", bg_color="#2f6c60", fg_color="#6699cc", height=h,
-                                 width=w, x=x, y=y).create_obj()
-        read_data_btn.place(x=x, y=y)
-
-        #  clear data button
-        x = read_data_btn.position_x + int(read_data_btn.cget("width")) + 5
-        y = read_data_btn.position_y
-        clear_data_btn = MyButton(data_manipulation_btns_label, text="Clear Data", command=self.clear_data,
-                                  font_size=14, text_color="#ffbf00",
-                                  bg_color="#2f6c60", fg_color="#6699cc", height=h, width=w, x=x, y=y).create_obj()
-        clear_data_btn.place(x=x, y=y)
-
-        #  record data button
-        y = read_data_btn.position_y + int(read_data_btn.cget("height")) + 5
-        x = read_data_btn.position_x
-        record_data_btn = MyButton(data_manipulation_btns_label, text="Record Data", command=None, font_size=14,
-                                   text_color="#ffbf00",
-                                   bg_color="#2f6c60", fg_color="#6699cc", height=h, width=w, x=x, y=y).create_obj()
-        record_data_btn.place(x=x, y=y)
-
-        #  view data records button
-        x = clear_data_btn.position_x
-        y = record_data_btn.position_y
-        view_records_btn = MyButton(data_manipulation_btns_label, text="View Records", command=None, font_size=14,
-                                    text_color="#ffbf00",
-                                    bg_color="#2f6c60", fg_color="#6699cc", height=h, width=w, x=x, y=y).create_obj()
-        view_records_btn.place(x=x, y=y)
-
-        # generate report button
-        h = (int(request_btns_label.cget("height")) - 15) // 2
-        w = (int(request_btns_label.cget("width")) - 15) // 2
-        x = 5
-        y = 5
-        generate_report_btn = MyButton(request_btns_label, text="Send Rept", command=self.send_report,
-                                       font_size=14, text_color="#ffbf00", bg_color="#2f6c60", fg_color="#6699cc",
-                                       height=h, width=w, x=x, y=y).create_obj()
-        generate_report_btn.place(x=x, y=y)
-
-        #  report logs button
-        x = generate_report_btn.position_x + int(generate_report_btn.cget("width")) + 5
-        y = generate_report_btn.position_y
-        report_log_btn = MyButton(request_btns_label, text="Report Logs", command=self.clear_data,
-                                  font_size=14, text_color="#ffbf00",
-                                  bg_color="#2f6c60", fg_color="#6699cc", height=h, width=w, x=x, y=y).create_obj()
-        report_log_btn.place(x=x, y=y)
-
-        #  report drafts button
-        y = generate_report_btn.position_y + int(generate_report_btn.cget("height")) + 5
-        x = generate_report_btn.position_x
-        report_drafts_btn = MyButton(request_btns_label, text="View Drafts", command=None, font_size=14,
-                                     text_color="#ffbf00", bg_color="#2f6c60", fg_color="#6699cc",
-                                     height=h, width=w, x=x, y=y).create_obj()
-        report_drafts_btn.place(x=x, y=y)
-
-        #  other button
-        x = report_log_btn.position_x
-        y = report_drafts_btn.position_y
-        other_btn = MyButton(request_btns_label, text="Report Report", command=None, font_size=14,
-                             text_color="#ffbf00", bg_color="#2f6c60", fg_color="#6699cc", height=h,
-                             width=w, x=x, y=y).create_obj()
-        other_btn.place(x=x, y=y)
-
-        # tutorial one button
-        h = (int(tutorial_btns_label.cget("height")) - int(tutorial_btns_label_title.cget("height")) - 15) // 2
-        w = (int(tutorial_btns_label.cget("width")) - 15) // 2
-        x = 5
-        y = tutorial_btns_label_title.position_y + int(tutorial_btns_label_title.cget("height")) + 5
-        tutorial_one_btn = MyButton(tutorial_btns_label, text="Tutorial 1", command=None,
-                                    font_size=14, text_color="#000000", bg_color="#25564c", fg_color="#e3b448",
-                                    height=h, width=w, x=x, y=y).create_obj()
-        tutorial_one_btn.place(x=x, y=y)
-
-        # tutorial two button
-        x = tutorial_one_btn.position_x + int(tutorial_one_btn.cget("width")) + 5
-        y = tutorial_one_btn.position_y
-        tutorial_two_btn = MyButton(tutorial_btns_label, text="Tutorial 2", command=self.show_scale_data,
-                                    font_size=14, text_color="#000000", bg_color="#25564c", fg_color="#e3b448",
-                                    height=h, width=w, x=x, y=y).create_obj()
-        tutorial_two_btn.place(x=x, y=y)
-
-        # tutorial three button
-        x = tutorial_one_btn.position_x
-        y = tutorial_one_btn.position_y + int(tutorial_one_btn.cget("height")) + 5
-        tutorial_three_btn = MyButton(tutorial_btns_label, text="Tutorial 3", command=self.show_scale_data,
-                                      font_size=14, text_color="#000000", bg_color="#25564c", fg_color="#e3b448",
-                                      height=h, width=w, x=x, y=y).create_obj()
-        tutorial_three_btn.place(x=x, y=y)
-
-        # tutorial four button
-        x = tutorial_two_btn.position_x
-        y = tutorial_three_btn.position_y
-        tutorial_four_btn = MyButton(tutorial_btns_label, text="Tutorial 4", command=self.show_scale_data,
-                                     font_size=14, text_color="#000000", bg_color="#25564c", fg_color="#e3b448",
-                                     height=h, width=w, x=x, y=y).create_obj()
-        tutorial_four_btn.place(x=x, y=y)
-
-        welcome_text = "Welcome to PIKANTO application. Enjoy the ride!"
-        self.display_text(welcome_text)
-        self.display_data("0.0")
-
-    def show_scale_data(self):
-        """Retrieves the reading on the scale with the set port number"""
-        port = '/COM3'
-        baudrate = 9600
-        parity = serial.PARITY_NONE
-        stopbits = serial.STOPBITS_ONE
-        bytesize = serial.EIGHTBITS
-
-        val = func.get_mass()
-        self.display_data(val)
-
-        return
-
-    def update_status(self, message):
-        """Pauses animation message on the status display and displays message"""
-        self.status_message = message
-        self.status_report_display.configure(text=self.status_message)
-        self.update()
-        time.sleep(5)
-        self.status_report_display.configure(text="")
-        self.update()
-        self.status_message = None
-
-    def save_settings(self, **kwargs):
-        """Saves the entries in the settings frame and updates status message display"""
-        message = "Entries were saved successfuly!"
-        self.port_number = kwargs["port_number"] if "port_number" in kwargs else None
-        self.update_status(message)
-        self.settings_frame.destroy()
-
-    def clear_data(self):
-        """Clears the current data on the data screen and replaces it with 0.0"""
-        self.weight_data = None
-        self.display_data("0.0")
-        self.update()
-
-    def display_data(self, data=None):
-        """Displays data on the data_display label"""
-        self.weight_data = data
-
-        def load_data():
-            self.data_display_label.configure(text="{} {}".format(self.weight_data, self.unit))
-            self.update()
-
-        if self.weight_data:
-            load_data()
-            self.data_display_label.after(300, self.display_data)
+    def create_report_form(self):
+        """creates the dialogue box for entering email report data"""
+        # check for existing initial weight data record for the vehicle (self.selected_value['haulier'])
+        self.weight_data = 234
+        worker = Messenger(self.server_url, '/search/existing_weight_record')
+        response = worker.query_server({'vehicle_id': self.selected_value['vehicle_id']})
+        record = response['data']
+        if record:
+            record = DotDict(response['data'])
+            self.weight_data = self.weight_data * 5
+            header_text = "Update Vehicle Record"
         else:
+            header_text = "Create New Record"
+
+        customers, hauliers = response['customers'], response['hauliers']
+
+        # check that customer and haulier list are not empty
+        if customers is None or len(customers) == 0:
+            self.update_status('No customers record found in the database')
+            return
+        if hauliers is None or len(hauliers) == 0:
+            self.update_status('No haulier record found in the database')
             return
 
-    def open_settings_form(self):
-        """creates a form for setting the scale port number"""
+        customer_list = {}
+        for x in customers:
+            customer_list[x['customer_name']] = x['customer_id']
+        haulier_list = {}
+        for y in hauliers:
+            haulier_list[y['haulier_name']] = y['haulier_id']
 
-        self.settings_frame = MyFrame(self, fg_color="gray", height=int(self.display_label.cget("height")),
-                                      width=int(self.display_label.cget("width")))
-        self.update()
-        port_field = self.settings_frame.create_entry(height=40, width=230, pht="port number to read data from",
-                                                      x=self.settings_frame.winfo_x() + 10,
-                                                      y=self.settings_frame.winfo_y() + 20)
+        # create a label the size of the main display label
+        h = int(self.display_label.cget('height'))
+        w = int(self.display_label.cget('width'))
+        x, y = self.display_label.position_x, self.display_label.position_y
+        report_label = MyLabel(self, text="", bg_color="#ffffff", fg_color="#c9c9c9", height=h, width=w, x=x, y=y) \
+            .create_obj()
+        report_label.place(x=x, y=y)
 
-        d_x = self.settings_frame.winfo_x() + (self.settings_frame.width / 2) - 57
-        d_y = self.settings_frame.winfo_y() + (self.settings_frame.height) - 50
-        save_btn = self.settings_frame.create_button(width=114, height=30, x=d_x, y=d_y, text="Save Settings",
-                                                     bg_color="gray", fg_color="#6699cc",
-                                                     command=lambda: self.save_settings(port_number=port_field.get()))
+        #  create header for the form
+        h = 100
+        x, y = 0, 0
+        report_header_label = MyLabel(report_label, text=header_text, bg_color="#c9c9c9",
+                                      fg_color="#838383", height=h, width=w, x=x, y=y, text_color="#ffffff",
+                                      font_size=28, font_weight="bold") \
+            .create_obj()
+        report_header_label.place(x=x, y=y)
 
-        self.settings_frame.place(x=self.display_label.winfo_x(), y=self.display_label.winfo_y())
+        # create 7 label divisions for the remaining form space
+        h = (int(report_label.cget('height')) - int(report_header_label.cget('height'))) // 7
+        w = report_label.cget('width')
+        x = report_header_label.position_x
+        y = report_header_label.position_y + int(report_header_label.cget('height'))
+        text = "Weight Data: {} {}".format(self.weight_data, self.unit)
+        div1 = MyLabel(report_label, text=text, bg_color="#c9c9c9",
+                       fg_color="#ffffff", height=h, width=w, x=x, y=y, text_color="#000000",
+                       font_size=22, font_weight="bold", corner_radius=8).create_obj()
+        div1.place(x=x, y=y)
+
+        # division 2
+        y = div1.position_y + int(div1.cget('height'))
+        div2 = MyLabel(report_label, text='', bg_color="#c9c9c9",
+                       fg_color="#c9c9c9", height=h, width=w, x=x, y=y).create_obj()
+        div2.place(x=x, y=y)
+
+        d_w = (int(div2.cget('width')) - 30) // 2
+        d_h = 40
+        vehicle_id = ctk.CTkEntry(div2, placeholder_text="Enter vehicle id", width=d_w,
+                                  height=d_h)
+        vehicle_id.insert(0, self.selected_value['vehicle_id'])
+        if record:
+            vehicle_id.configure(state='disabled')
+        vehicle_id.position_x, vehicle_id.position_y = 10, 5
+        vehicle_id.place(x=vehicle_id.position_x, y=vehicle_id.position_y)
+        self.selected_value['vehicle_id'] = vehicle_id
+
+        vehicle_name = ctk.CTkEntry(div2, placeholder_text="Enter vehicle name", width=d_w,
+                                    height=d_h)
+        if record:
+            vehicle_name.insert(0, record.vehicle_name)
+            vehicle_name.configure(state='disabled')
+        vehicle_name.position_x = vehicle_id.position_x + int(vehicle_id.cget('width')) + 10
+        vehicle_name.position_y = vehicle_id.position_y
+        vehicle_name.place(x=vehicle_name.position_x, y=vehicle_name.position_y)
+        self.selected_value['vehicle_name'] = vehicle_name
+
+        # division 3
+        y = div2.position_y + int(div2.cget('height'))
+        div3 = MyLabel(report_label, text='', bg_color="#c9c9c9",
+                       fg_color="#c9c9c9", height=h, width=w, x=x, y=y).create_obj()
+        div3.place(x=x, y=y)
+
+        d_w = (int(div3.cget('width')) - 30) // 2
+        driver_name = ctk.CTkEntry(div3, placeholder_text="Enter driver name here", width=d_w,
+                                   height=d_h)
+        if record:
+            driver_name.insert(0, record.driver_name)
+            driver_name.configure(state='disabled')
+        driver_name.position_x, driver_name.position_y = 10, 5
+        driver_name.place(x=driver_name.position_x, y=driver_name.position_y)
+        self.selected_value['driver_name'] = driver_name
+
+        driver_phone = ctk.CTkEntry(div3, placeholder_text="Enter driver phone number", width=d_w,
+                                    height=d_h)
+        if record:
+            driver_phone.insert(0, record.driver_phone)
+            driver_phone.configure(state='disabled')
+        driver_phone.position_x = driver_name.position_x + int(driver_name.cget('width')) + 10
+        driver_phone.position_y = driver_name.position_y
+        driver_phone.place(x=driver_phone.position_x, y=driver_phone.position_y)
+        self.selected_value['driver_phone'] = driver_phone
+
+        # division 4
+        y = div3.position_y + int(div3.cget('height'))
+        div4 = MyLabel(report_label, text='', bg_color="#c9c9c9",
+                       fg_color="#c9c9c9", height=h, width=w, x=x, y=y).create_obj()
+        div4.place(x=x, y=y)
+
+        d_w = (int(div4.cget('width')) - 30) // 2
+        trans_companies = {'name_1': 1, 'name_2': 2, 'name_3': 3, 'name_4': 4}
+        transport_company = ctk.CTkComboBox(div4, values=list(haulier_list.keys()), width=d_w,
+                                            height=d_h, corner_radius=5)
+        if record:
+            new_values = [x for x in haulier_list.keys() if haulier_list.get(x) == record.haulier_id]
+            transport_company.configure(values=new_values)
+            transport_company.set(new_values[0])
+            self.selected_value['haulier'] = record.haulier_id
+        else:
+            transport_company.set('Select transport company')
+        transport_company.position_x, transport_company.position_y = 10, 5
+        transport_company.place(x=transport_company.position_x, y=transport_company.position_y)
+
+        def trans_callback(choice):
+            """function to execute when a transport company is selected"""
+            self.status_message = 'wait'
+            self.selected_value['haulier'] = haulier_list.get(choice)
+            self.status_message = None
+
+        transport_company.configure(command=trans_callback)
+
+        customers = {'name_1': 1, 'name_2': 2, 'name_3': 3, 'name_4': 4}
+        customer = ctk.CTkComboBox(div4, values=list(customer_list.keys()), width=d_w,
+                                   height=d_h, corner_radius=5)
+        if record:
+            new_values = [x for x in customer_list.keys() if customer_list.get(x) == record.customer_id]
+            customer.configure(values=new_values)
+            customer.set(new_values[0])
+            self.selected_value['customer_id'] = record.customer_id
+        else:
+            customer.set('Select customer')
+        customer.position_x = transport_company.position_x + int(transport_company.cget('width')) + 10
+        customer.position_y = transport_company.position_y
+        customer.place(x=customer.position_x, y=customer.position_y)
+
+        def customer_callback(choice):
+            """function to execute when a customer item is selected"""
+            self.status_message = 'wait'
+            self.selected_value['customer_id'] = customer_list.get(choice)
+            self.status_message = None
+
+        customer.configure(command=customer_callback)
+
+        # division 5
+        y = div4.position_y + int(div4.cget('height'))
+        div5 = MyLabel(report_label, text='', bg_color="#c9c9c9",
+                       fg_color="#c9c9c9", height=h, width=w, x=x, y=y).create_obj()
+        div5.place(x=x, y=y)
+
+        d_w = (int(div5.cget('width')) - 20) // 3
+        order_number = ctk.CTkEntry(div5, placeholder_text="Enter order number", width=d_w,
+                                    height=d_h)
+        if record:
+            order_number.insert(0, record.order_number)
+            order_number.configure(state='disabled')
+        order_number.position_x, order_number.position_y = 10, 5
+        order_number.place(x=order_number.position_x, y=order_number.position_y)
+        self.selected_value['order_number'] = order_number
+
+        product = ctk.CTkEntry(div5, placeholder_text="Enter product name", width=d_w,
+                               height=d_h)
+        if record:
+            product.insert(0, record.product)
+            product.configure(state='disabled')
+        product.position_x = order_number.position_x + int(order_number.cget('width')) + 5
+        product.position_y = order_number.position_y
+        product.place(x=product.position_x, y=product.position_y)
+        self.selected_value['product'] = product
+
+        destination = ctk.CTkEntry(div5, placeholder_text="Enter destination", width=d_w,
+                                   height=d_h)
+        if record:
+            destination.insert(0, record.destination)
+            destination.configure(state='disabled')
+        destination.position_x = product.position_x + int(product.cget('width')) + 5
+        destination.position_y = product.position_y
+        destination.place(x=destination.position_x, y=destination.position_y)
+        self.selected_value['destination'] = destination
+
+        # division 6
+        y = div5.position_y + int(div5.cget('height'))
+        div6 = MyLabel(report_label, text='', bg_color="#c9c9c9",
+                       fg_color="#c9c9c9", height=h, width=w, x=x, y=y).create_obj()
+        div6.place(x=x, y=y)
+
+        d_w = (int(div6.cget('width')) - 20) // 3
+        weight_1 = ctk.CTkEntry(div6, width=d_w, height=d_h)
+        if record:
+            weight_1.insert(0, "{}    {}".format(record.initial_weight, record.initial_time))
+        else:
+            weight_1.insert(0, self.weight_data)
+        weight_1.configure(state='disabled')
+        weight_1.position_x, weight_1.position_y = 10, 5
+        weight_1.place(x=weight_1.position_x, y=weight_1.position_y)
+        self.selected_value['weight_1'] = weight_1
+
+        weight_2 = ctk.CTkEntry(div6, placeholder_text='Vehicle exit weight appears here', width=d_w, height=d_h)
+        # insert the value here
+        if record:
+            weight_2.insert(0, self.weight_data)
+        weight_2.configure(state='disabled')
+        weight_2.position_x = weight_1.position_x + int(weight_1.cget('width')) + 5
+        weight_2.position_y = weight_1.position_y
+        weight_2.place(x=weight_2.position_x, y=weight_2.position_y)
+        self.selected_value['weight_2'] = weight_2
+
+        weight_3 = ctk.CTkEntry(div6, placeholder_text='Net weight appears here', width=d_w, height=d_h)
+        # insert the value here
+        if record:
+            if self.weight_data > int(record.initial_weight):
+                difference = self.weight_data - int(record.initial_weight)
+            else:
+                difference = int(record.initial_weight) - self.weight_data
+            weight_3.insert(0, difference)
+        weight_3.configure(state='disabled')
+        weight_3.position_x = weight_2.position_x + int(weight_2.cget('width')) + 5
+        weight_3.position_y = weight_2.position_y
+        weight_3.place(x=weight_3.position_x, y=weight_3.position_y)
+        self.selected_value['net_weight'] = weight_3
+
+        # division 7
+        y = div6.position_y + int(div6.cget('height')) + 10
+        div7 = MyLabel(report_label, text='', bg_color="#c9c9c9",
+                       fg_color="#c9c9c9", height=h, width=w, x=x, y=y).create_obj()
+        div7.place(x=x, y=y)
+
+        d_w = (int(div7.cget('width')) - 50) // 2
+        cancel_btn = MyButton(div7, text='Cancel', width=d_w, font_size=16,
+                              text_color="#ffbf00", bg_color="#c9c9c9", fg_color="#6699cc", corner_radius=8,
+                              height=d_h, x=10, y=5).create_obj()
+        cancel_btn.place(x=cancel_btn.position_x, y=cancel_btn.position_y)
+
+        x = cancel_btn.position_x + int(cancel_btn.cget('width')) + 30
+        y = cancel_btn.position_y
+        submit_btn = MyButton(div7, text='Submit', width=d_w, font_size=16,
+                              text_color="#ffbf00", bg_color="#c9c9c9", fg_color="#6699cc", corner_radius=8,
+                              height=d_h, x=x, y=y).create_obj()
+        submit_btn.place(x=x, y=y)
+
+        def cancel_action():
+            """closes the record form"""
+            report_label.destroy()
+
+        def submit_form_entries():
+            """processes entry data and submits it for saving in the database"""
+            submit_btn.configure(text="Processing, please wait...")
+            submit_btn.place(x=x, y=y)
+
+            data = self.selected_value
+            mr = {}
+            mr['product'] = data['product'].get()
+            mr['order_number'] = data['order_number'].get()
+            mr['destination'] = data['destination'].get()
+            mr['vehicle_name'] = data['vehicle_name'].get()
+            mr['vehicle_id'] = data['vehicle_id'].get()
+            mr['driver_phone'] = data['driver_phone'].get()
+            mr['driver_name'] = data['driver_name'].get()
+            mr['customer'] = data['customer_id']
+            mr['haulier'] = data['haulier']
+            mr['weight_1'] = data['weight_1'].get()
+            messenger = Messenger(self.server_url, '/save_records')
+            if record:
+                mr['weight_1'] = record.initial_weight
+                mr['weight_2'] = data['weight_2'].get()
+                mr['net_weight'] = data['net_weight'].get()
+                messenger = Messenger(self.server_url, '/update_records')
+            report_label.destroy()
+            resp = messenger.query_server(mr)
+            self.update_status(resp['message'])
+
+        def thread_request():
+            """Starts a thread that processes form and data and sends it to the database for storage"""
+            # Start a thread to handle the database operation
+            thread = Thread(target=submit_form_entries)
+            thread.daemon = True  # Daemonize the thread to avoid issues on application exit
+            thread.start()
+
+        cancel_btn.configure(command=cancel_action)
+        submit_btn.configure(command=thread_request)
 
         return
 
-    def start_ngrok(self):
-        """starts the application that issues the public url for our local app"""
+    def view_weight_records(self):
+        """fetches weight records from database and display them on the main display window"""
+        # check if the view is open and close
+        if self.record_view_display:
+            self.record_view_display.destroy()
 
-        # notify user
-        self.state_objects['server_status_text'].configure(text='connecting...')
+        # fetch data from database
+        my_query = Messenger(self.server_url, '/fetch_resources/weight_records')
+        response = my_query.query_server({'data': None})
+        if response['status'] == 1:
+            data = response['data']
+        else:
+            data = None
+            func.notify_user('No records found!')
+            return
 
-        # connect ngrok
-        try:
-            # disable button action
-            self.state_objects['server_button'].configure(command=None)
+        if data:
+            items_per_page = 5
+            grouper = SubGroupCreator(data)
+            grouper.create_sub_groups(items_per_page)
+            total_groups = grouper.total_groups()
 
-            # delay the process. This time should be sufficient to allow the backend server to start running
-            time.sleep(5)
+            def display_items(group_number):
+                """function creates a widget that displays certain number of data on the main display"""
+                items_to_display = grouper.get_group(group_number)
 
-            # connect ngrok
-            my_url = ngrok.connect(8088, domain='roughy-topical-easily.ngrok-free.app') \
-                .public_url
+                # create a label the size of the main display label
+                h = int(self.display_label.cget('height'))
+                w = int(self.display_label.cget('width'))
+                x, y = self.display_label.position_x, self.display_label.position_y
+                report_label = MyLabel(self, text="", bg_color="#ffffff", fg_color="#c9c9c9", height=h, width=w, x=x,
+                                       y=y) \
+                    .create_obj()
+                report_label.place(x=x, y=y)
+                self.record_view_display = report_label
 
-            # change states
-            self.state_objects['server_status_light'].configure(fg_color='#f0f725')
-            time.sleep(1)
-            self.update_status('Server Started!')
-            self.state_objects['server_status_text'].configure(text='server running...')
-            self.state_objects['server_button'].configure(text='Stop Server', command=lambda: self.stop_ngrok(my_url))
+                #  create header for the form
+                h = 60
+                x, y = 0, 0
+                report_header_label = MyLabel(report_label, text="", bg_color="#ffffff", fg_color="#ffffff",
+                                              height=h, width=w, x=x, y=y, text_color="#000000", font_size=28,
+                                              font_weight="bold") \
+                    .create_obj()
+                report_header_label.place(x=x, y=y)
 
-            #  print url on the cli
-            print(' * TUNNEL URL: ' + my_url)
-        except Exception as e:
-            self.update_status('Start up operation failed with the error: '+str(e))
-            self.state_objects['server_status_text'].configure(text='Startup failed!')
+                # create 4 header widgets in the header label
+                h = int(report_header_label.cget('height')) - 10
+                # w = (((int(report_header_label.cget('width'))-10) // 3) * 2)//3
+                w = ((int(report_header_label.cget('width')) - 10) * (2 / 9)) - 5
+                x, y = 5, 5
+                head_1 = MyTexBox(report_header_label, text='HAULIER', bg_color="#ffffff",
+                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
+                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
+                head_1.place(x=x, y=y)
+                x = head_1.position_x + int(head_1.cget('width')) + 5
+                head_2 = MyTexBox(report_header_label, text='VEHICLE ID', bg_color="#ffffff",
+                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
+                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
+                head_2.place(x=x, y=y)
+                x = head_2.position_x + int(head_2.cget('width')) + 5
+                head_3 = MyTexBox(report_header_label, text='TIME', bg_color="#ffffff",
+                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
+                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
+                head_3.place(x=x, y=y)
+                w = ((int(report_header_label.cget('width')) - 10) // 3)
+                x = head_3.position_x + int(head_3.cget('width')) + 5
+                head_4 = MyTexBox(report_header_label, text='ACTIONS', bg_color="#ffffff",
+                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
+                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
+                head_4.place(x=x, y=y)
 
-    def stop_ngrok(self, url: str):
-        """ disconnects ngrock agent from localhost"""
-        try:
-            ngrok.disconnect(url)
-            # change states
-            self.state_objects['server_status_light'].configure(fg_color='grey')
-            time.sleep(1)
-            self.update_status('Server Has Stopped!')
-            self.state_objects['server_status_text'].configure(text='server stopped.')
-            self.state_objects['server_button'].configure(text='Start Server', command=self.start_ngrok)
-        except Exception as e:
-            self.update_status('Stop operation failed with the error: ' + str(e))
-            self.state_objects['server_status_text'].configure(text='Failed to stop.')
+                # create a wrapper where all the items are going to be displayed
+                h = int(report_label.cget('height')) - (50 + int(report_header_label.cget('height')))
+                w = int(report_label.cget('width'))
+                x, y = 0, int(report_header_label.cget('height')) + report_header_label.position_y
+                content_wrapper = MyLabel(report_label, text='', bg_color="#2f6c60",
+                                          fg_color="#ffffff", height=h, width=w, x=x, y=y,
+                                          font_weight="bold", corner_radius=8).create_obj()
+                content_wrapper.place(x=x, y=y)
 
-    def display_text(self, text=None):
-        """Displays continuous text on the screen letter_by_letter"""
-        if self.status_message is None:
-            if text:
-                self.buffer_text = text
+                # iterate over the list of items to display and create widgets to display
+                # ...information for each item wrt to the header
+                item_position_y = 0
+                for item in items_to_display:
+                    item = DotDict(item)
+                    skipper = h = content_wrapper.cget('height') // items_per_page
+                    w = int(content_wrapper.cget('width')) - 10
+                    y = item_position_y
+                    x = 5
+                    item_wrapper = MyLabel(content_wrapper, text='', bg_color="#2f6c60",
+                                           fg_color="#2f6c60", height=h, width=w, x=x, y=y,
+                                           font_weight="bold", corner_radius=8).create_obj()
+                    item_wrapper.place(x=x, y=y)
 
-            textlist = self.buffer_text.split()
-            self.status_report_display.configure(text=" ")
+                    d_h = h - 20
+                    d_w = int(head_1.cget('width')) - 5
+                    d_x = head_1.position_x
+                    d_y = 10
+                    col_1 = MyTexBox(item_wrapper, text=item.haulier, bg_color="#2f6c60",
+                                     fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
+                                     font_size=14, corner_radius=8).create_obj()
+                    col_1.place(x=d_x, y=d_y)
 
-            for xk in textlist:
-                count = 0
-                while count < len(xk):
-                    y = self.status_report_display.cget("text")
-                    self.status_report_display.configure(text=y + xk[count])
-                    self.update()
-                    count += 1
-                    time.sleep(0.1)
-                y = self.status_report_display.cget("text") + " "
-                self.status_report_display.configure(text=y)
+                    # create an indicator to show if item is approved or not
+                    if item.approval_status == 'approved':
+                        bg_color = '#53f925'
+                        indicator_text = 'approved'
+                    else:
+                        bg_color = 'grey'
+                        indicator_text = 'pending'
+                    indicator = MyTexBox(col_1, text=indicator_text, bg_color="#ffffff",
+                                         fg_color=bg_color, height=(d_h / 2)-5, width=(d_w / 2) - 10, x=5, y=25,
+                                         text_color="#000000", font_size=12, corner_radius=50).create_obj()
+                    indicator.place(x=5, y=25)
 
-        self.status_report_display.after(5000, self.display_text)
+                    d_x = head_2.position_x
+                    col_2 = MyTexBox(item_wrapper, text=item.vehicle_id, bg_color="#2f6c60",
+                                     fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
+                                     font_size=14, corner_radius=8).create_obj()
+                    col_2.place(x=d_x, y=d_y)
 
-    def create_server_indicator_objects(self, window, w, h, x, y):
-        """creates the indicator for server status and its side text"""
-        #  wrapper label
-        indicator = MyLabel(window, text="", bg_color="#2f6c60", fg_color="#25564c", height=h,
-                            width=w, x=x, y=y).create_obj()
-        indicator.place(x=x, y=y)
+                    d_x = head_3.position_x
+                    col_3 = MyTexBox(item_wrapper, text=item.initial_time, bg_color="#2f6c60",
+                                     fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
+                                     font_size=14, corner_radius=8).create_obj()
+                    col_3.place(x=d_x, y=d_y)
 
-        #  indicator light
-        x, y = 5, 2
-        indicator_light = MyLabel(indicator, text="", bg_color="#2f6c60", fg_color="grey", height=16,
-                                  width=16, x=x, y=y, border_radius=8).create_obj()
-        indicator_light.place(x=x, y=y)
+                    # create wrapper for the action buttons
+                    w = int(head_4.cget('width')) - 5
+                    x = head_4.position_x
+                    action_btn_wrapper = MyLabel(item_wrapper, text='', bg_color="#2f6c60",
+                                                 fg_color="#ffffff", height=d_h, width=w, x=x, y=d_y,
+                                                 font_weight="bold", corner_radius=8).create_obj()
+                    action_btn_wrapper.place(x=x, y=d_y)
 
-        # add indicator text to state objects
-        self.state_objects['server_status_light'] = indicator_light
+                    # buttons
+                    h = 30
+                    w = (int(action_btn_wrapper.cget('width')) // 3) - 15
+                    x = 5
+                    y = (int(action_btn_wrapper.cget('height')) - h) // 2
+                    detail_btn = MyButton(action_btn_wrapper, text="Details", font_size=12,
+                                          text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
+                                          height=h, width=w, x=x, y=y,
+                                          command=self.display_data_details).create_obj()
+                    detail_btn.place(x=x, y=y)
 
-        #  indicator text
-        w = int(indicator.cget('width')) - 5 - int(indicator_light.cget('width'))
-        h = int(indicator.cget('height'))
-        x = indicator_light.position_x + int(indicator_light.cget('width')) + 5
-        y = indicator_light.position_y
-        indicator_text = MyLabel(indicator, text="server stopped.", bg_color="#2f6c60", fg_color="#2f6c60",
-                                 height=h, width=w, x=x, y=y, text_color="#ffffff", font_style="italic",
-                                 font_size=10).create_obj()
-        indicator_text.place(x=x, y=y)
+                    x = detail_btn.position_x + int(detail_btn.cget('width')) + 15
+                    waybill_btn = MyButton(action_btn_wrapper, text="Waybill", font_size=12,
+                                           text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
+                                           height=h, width=w, x=x, y=y,
+                                           command=partial(self.open_waybill_entry, item)).create_obj()
+                    waybill_btn.place(x=x, y=y)
+                    x = waybill_btn.position_x + int(waybill_btn.cget('width')) + 15
+                    ticket_btn = MyButton(action_btn_wrapper, text="Request", font_size=12,
+                                          text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
+                                          height=h, width=w, x=x, y=y,
+                                          command=partial(self.send_approval_request, item)).create_obj()
+                    if not item.ticket_ready or not item.waybill_ready or item.approval_status != 'pending':
+                        ticket_btn.configure(state='disabled')
+                    ticket_btn.place(x=x, y=y)
 
-        # add indicator text to state objects
-        self.state_objects['server_status_text'] = indicator_text
+                    item_position_y += skipper
 
-        return indicator
+                # create buttons to navigate different pages of the records
+                h = 50
+                w = int(report_label.cget('width'))
+                y = int(report_label.cget('height')) - 50
+                x = 0
+                btn_wrapper = MyLabel(report_label, text='', bg_color="#2f6c60",
+                                      fg_color="#ffffff", height=h, width=w, x=x, y=y,
+                                      font_weight="bold", corner_radius=8).create_obj()
+                btn_wrapper.place(x=x, y=y)
 
-    def send_report(self):
-        """sends report to a designated email"""
-        self.update_status('sending report, please wait...')
+                h = 20
+                w = 40
+                x = (btn_wrapper.cget('width') // 2) - 50
+                y = 10
+                prev_btn = MyButton(btn_wrapper, text="<< Prev", font_size=12, text_color="#ffffff",
+                                    bg_color="#ffffff", fg_color="#6699cc", height=h, width=w, x=x, y=y,
+                                    ).create_obj()
+                if group_number == 1:
+                    prev_btn.configure(state='disabled')
+                prev_btn.place(x=x, y=y)
 
-        data = {}
-        recipient = 'samuel.n@ugeechemicals.com'
-        data['email'] = 'belovedsamex@yahoo.com'
-        data['title'] = 'Pikanto Email Test'
-        headers = {'Content-Type': 'application/json'}
-        url = 'http://localhost:8088/send_email'
-        link = "https://roughy-topical-easily.ngrok-free.app?recipient_email="+recipient
-        data['content'] = '<h3>Testing Pikanto Application</h3>'
-        data['content'] += '<p>Please use the link below to review/approve shipment report.</p>'
-        data['content'] += '<a href="{}"><p>Approve</p></a>'.format(link)
-        data['content'] += '<p> Thank you.</p>'
-        # response = requests.post(url, headers=headers, json=data)
-        # res_data = response.json()
-        # print(res_data['message'])
-        # self.update_status(res_data['message'])
-        SendMail().sendmail()
+                x = (btn_wrapper.cget('width') // 2) + 10
+                next_btn = MyButton(btn_wrapper, text="Next >>", font_size=12, text_color="#ffffff",
+                                    bg_color="#ffffff", fg_color="#6699cc", height=h, width=w, x=x, y=y,
+                                    ).create_obj()
+                if group_number == total_groups:
+                    next_btn.configure(state='disabled')
+                next_btn.place(x=x, y=y)
 
-        return
+                # functions to handle prev and next button clicks
+                def on_prev_click():
+                    # destroy current view
+                    report_label.destroy()
+                    display_items(group_number - 1)
+
+                def on_next_click():
+                    # destroy current view
+                    report_label.destroy()
+                    display_items(group_number + 1)
+
+                prev_btn.configure(command=on_prev_click)
+                next_btn.configure(command=on_next_click)
+
+                # button to exit the record view from screen
+                x = x + 250
+                exit_btn = MyButton(btn_wrapper, text="Exit", font_size=12, text_color="#000000",
+                                    bg_color="#ffffff", fg_color="#e3b448", height=h, width=w, x=x, y=y,
+                                    command=lambda: report_label.destroy()).create_obj()
+                exit_btn.place(x=x, y=y)
+
+            display_items(1)
+
+    def window_animation(self, text):
+        """displays animation on the main display window"""
+        h = int(self.display_label.cget('height')) // 3
+        w = (int(self.display_label.cget('width')) // 3) * 2
+        x = (int(self.display_label.cget('width')) // 3) // 2 + self.display_label.position_x
+        y = self.display_label.position_y + h
+        _object = MyLabel(self.display_label, height=h, width=w, bg_color="#ffffff", fg_color="red",
+                          text_color="#000000", text=text, x=x, y=y).create_obj()
+        _object.place(x=x, y=y)
+        return _object
+
+    def record_data(self):
+        """generates a dialogue box for user to select transport company"""
+        options = {'option 1': 1, 'option 2': 2, 'option 3': 3, 'option 4': 4, 'option 5': 5}
+
+        self.selected_value['vehicle_id'] = None
+
+        def btn_action():
+            """function to execute when the user submits the form"""
+            # check if a value was selected
+            self.selected_value['vehicle_id'] = self.state_objects['vehicle_id'].get()
+            if not self.selected_value['vehicle_id']:
+                func.notify_user('You did not enter any value.')
+                return
+            self.status_message = None
+            self.toplevel_window.destroy()
+            self.toplevel_window = None
+            self.create_report_form()
+
+        def on_closing():
+            """function to execute when dialogue box is about to close"""
+            self.status_message = None
+            self.toplevel_window.destroy()
+            self.toplevel_window = None
+
+        # create a dialogue box that allows the user to select the transport company whose data will be recorded
+        if self.toplevel_window is None:
+            # stop the status display
+            self.status_message = 'stop'
+
+            # create the dialogue box
+            my_dialogue_box = DialogueBox(400, 300, fg_color='#2f6c60')
+            my_dialogue_box.title('Provide Vehicle ID')
+            # create an entry widget in the box
+            w = (my_dialogue_box.width // 3) * 2
+            transport_company = ctk.CTkEntry(my_dialogue_box, placeholder_text="Enter vehicle id", width=w,
+                                             height=40)
+            self.state_objects['vehicle_id'] = transport_company
+            transport_company.pack(pady=110)
+            ok_btn = ctk.CTkButton(my_dialogue_box, text='Submit', text_color='#ffbf00', fg_color='#6699cc',
+                                   bg_color='grey', corner_radius=2, border_spacing=0, command=btn_action,
+                                   font=("Segoe UI", 12, "normal"))
+            ok_btn.pack()
+            my_dialogue_box.protocol("WM_DELETE_WINDOW", on_closing)
+            self.toplevel_window = my_dialogue_box
+
+        else:
+            self.toplevel_window.focus()
+
+    def fetch_resources(self):
+        """fetches all usable data from the database"""
+        customer = None
+        haulier = None
+
+        # fetch data from database
+        my_query = Messenger(self.server_url, '/fetch_resources/all')
+        response = my_query.query_server({'data': None})
+
+        if response['status'] == 1:
+            customer = response['customers']
+            haulier = response['hauliers']
+
+        return customer, haulier
 
 
 if __name__ == "__main__":
