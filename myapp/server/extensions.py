@@ -205,7 +205,7 @@ def approve():
     email = request.args.get('email')
     weight_log_id = request.args.get('wtlog_id')
 
-    if not email or weight_log_id:
+    if not email or not weight_log_id:
         return render_template_string("""
                         <h3>Sorry, you are not authorized to view this page.</h3>            
                 """)

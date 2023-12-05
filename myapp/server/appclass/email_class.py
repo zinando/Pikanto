@@ -111,6 +111,7 @@ email_template = '''
                 <input type="password" id="password" name="password">
                 <input type="submit" value="Submit">
             </form>
+        {% endblock content %}
     </body>
     </html>
     '''
