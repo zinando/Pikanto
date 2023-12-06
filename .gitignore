@@ -1,6 +1,7 @@
 # Logs
+
 *.sln
 *.sw?
-*.env
-*.flaskenv
+#*.env
+#*.flaskenv
 *virtual/

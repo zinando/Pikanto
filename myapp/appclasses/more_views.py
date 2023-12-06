@@ -1412,9 +1412,8 @@ class WindowViews(CreateAppView):
         </head>
         <body>
             <!-- Logo -->
-            <iframe src="https://silchemicalsltd-my.sharepoint.com/personal/samuel_n_ugeechemicals_com/_layouts/15/embed.aspx?UniqueId=c29cb4e6-7082-46c3-bb9c-3458fa2a0777" width="640" height="360" frameborder="0" scrolling="no" allowfullscreen title="ugee-edited.png"></iframe>
-            <!--<img src="https://your-logo-url.com" alt="Company Logo" style="width: 100%; max-width: 600px; display: block; margin: 0 auto;">-->
-
+            <img src="https://i.imgur.com/iP3xtXj.png" alt="Company Logo" class="img-fluid" style="max-width: 100%;">
+                
             <p>You have been requested to review the following information and to append your approval of the waybill
             by clicking any of the links shared below.</p>
             <p> Please <b>note</b> that you will need your Pikanto app credentials to be able to append your approval.</p>

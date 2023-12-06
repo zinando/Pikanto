@@ -35,7 +35,7 @@ class EmailService:
         return {"status": 1, "message": "message sent!"}
 
 
-email_template = '''
+email_template2 = '''
     <!DOCTYPE html>
     <html>
     <head>
@@ -43,9 +43,8 @@ email_template = '''
     </head>
     <body>
         <!-- Logo -->
-            <iframe src="https://silchemicalsltd-my.sharepoint.com/personal/samuel_n_ugeechemicals_com/_layouts/15/embed.aspx?UniqueId=c29cb4e6-7082-46c3-bb9c-3458fa2a0777" width="640" height="360" frameborder="0" scrolling="no" allowfullscreen title="ugee-edited.png"></iframe>
-            <!--<img src="https://your-logo-url.com" alt="Company Logo" style="width: 100%; max-width: 600px; display: block; margin: 0 auto;">-->
-
+            <img src="https://i.imgur.com/iP3xtXj.png" alt="Company Logo" class="img-fluid" style="max-width: 100%;">
+                
             <p>You have been requested to review the following information and to append your approval of the waybill
             by clicking providing your Pikanto app password using the below form.</p>
             
@@ -114,4 +113,108 @@ email_template = '''
         {% endblock content %}
     </body>
     </html>
+    '''
+
+email_template = '''
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Pikanto | Waybill Information</title>
+        <!-- Bootstrap CSS -->
+        <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="container">
+            <!-- Logo -->
+            <div class="row justify-content-center">
+                <div class="col-sm-8 col-md-6 text-center">
+                    <img src="https://i.imgur.com/iP3xtXj.png" alt="Company Logo" class="img-fluid">
+                </div>
+            </div>        
+    
+            <p class="text-center">You have been requested to review the following information and to append your approval of the waybill by providing your Pikanto app password using the below form.</p>
+    
+            {% block content %}
+            <!-- Table 1 -->
+            <h2>WEIGHBRIDGE SLIP</h2>
+            <div class="table-responsive">
+                <table class="table">
+                    {{table1_data | safe}}
+                </table>
+            </div>
+    
+            <!-- Table 2 -->
+            <hr class="my-4">
+            <h2>WAYBILL DATA</h2>
+            <div class="table-responsive">
+                <table class="table">
+                    {{table2_data | safe}}
+                </table>
+            </div>
+            <hr class="my-4">
+            <!-- Table 3 -->
+            <h2>Products</h2>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Product Description</th>
+                            <th>Product Code</th>
+                            <th>No of Packages (Bags/Boxes)</th>
+                            <th>Quantity (MT/NOs)</th>
+                            <th>Accepted Quantity</th>
+                            <th>Remarks</th>
+                            <!-- Add more headers if needed -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populate table 3 data -->
+                        {{table3_data | safe}}
+                    </tbody>
+                </table>
+            </div>
+    
+            <!-- Table 4 -->
+            <h2>Bad Products</h2>
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Product Description</th>
+                            <th>Damaged Quantity</th>
+                            <th>Shortage</th>
+                            <th>Batch Number</th>
+                            <!-- Add more headers if needed -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populate table 4 data -->
+                        {{table4_data | safe}}
+                    </tbody>
+                </table>
+            </div>
+    
+            <hr class="my-4">
+            <!-- Password Form -->
+            <div class="table-responsive">
+                <div style="color: #e97464">{{response}}</div>
+                <hr class="my-4">
+                <h3 class="text-center">Enter your password below to approve:</h3>
+                <form method="post" action="/approve?email={{email}}&wtlog_id={{weight_log_id}}">
+                    <div class="form-group">
+                        <label for="password">Enter Password:</label>
+                        <input type="password" class="form-control" id="password" name="password">
+                    </div>
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                    </div>
+                </form>
+            </div>
+            {% endblock content %}
+        </div>
+    
+        <!-- Bootstrap JS -->
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    </body>
+</html>
     '''

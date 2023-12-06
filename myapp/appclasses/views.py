@@ -6,6 +6,7 @@ from appclasses.buttonclass import MyButton
 from appclasses.frameclass import MyFrame
 from helpers import myfunctions as func
 from pyngrok import ngrok
+import threading
 import requests
 import os
 import time
@@ -150,11 +151,18 @@ class CreateAppView(ctk.CTk):
                                 height=50, width=100, x=20, y=10).create_obj()
         settings_btn.place(x=20, y=10)
 
+        def thread_request():
+            """Starts a thread that processes form and data and sends it to the database for storage"""
+            # Start a thread to handle the database operation
+            thread = threading.Thread(target=self.start_ngrok)
+            thread.daemon = True  # Daemonize the thread to avoid issues on application exit
+            thread.start()
+
         # server start/stop button
         h = int(server_button_label.cget('height')) - 4
         w = int(server_button_label.cget('width')) - 4
         x, y = 2, 2
-        server_btn = MyButton(server_button_label, text="Start Server", command=self.start_ngrok, font_size=13,
+        server_btn = MyButton(server_button_label, text="Start Server", command=thread_request, font_size=13,
                               text_color="#ffffff", bg_color="#2f6c60", fg_color="#0080ff", corner_radius=0,
                               height=h, width=w, x=x, y=y).create_obj()
         server_btn.place(x=x, y=y)
