@@ -15,6 +15,7 @@ from appclasses.report_messenger import Messenger
 from appclasses.dotdict_class import DotDict
 from appclasses.group_class import SubGroupCreator
 import time
+from datetime import datetime
 
 
 class Pikanto(WindowViews):
@@ -26,17 +27,18 @@ class Pikanto(WindowViews):
         self.toplevel_window = None
         self.selected_value = {}
         self.create_base_view()
+        self.check_internet_connection()
 
     def create_report_form(self):
         """creates the dialogue box for entering email report data"""
         # check for existing initial weight data record for the vehicle (self.selected_value['haulier'])
-        self.weight_data = 234
+        # self.weight_data = 234
         worker = Messenger(self.server_url, '/search/existing_weight_record')
         response = worker.query_server({'vehicle_id': self.selected_value['vehicle_id']})
         record = response['data']
         if record:
             record = DotDict(response['data'])
-            self.weight_data = self.weight_data * 5
+            # self.weight_data = self.weight_data * 5
             header_text = "Update Vehicle Record"
         else:
             header_text = "Create New Record"
@@ -234,7 +236,7 @@ class Pikanto(WindowViews):
         d_w = (int(div6.cget('width')) - 20) // 3
         weight_1 = ctk.CTkEntry(div6, width=d_w, height=d_h)
         if record:
-            weight_1.insert(0, "{}    {}".format(record.initial_weight, record.initial_time))
+            weight_1.insert(0, "{}  |  {}".format(record.initial_weight, record.initial_time))
         else:
             weight_1.insert(0, self.weight_data)
         weight_1.configure(state='disabled')
@@ -245,7 +247,7 @@ class Pikanto(WindowViews):
         weight_2 = ctk.CTkEntry(div6, placeholder_text='Vehicle exit weight appears here', width=d_w, height=d_h)
         # insert the value here
         if record:
-            weight_2.insert(0, self.weight_data)
+            weight_2.insert(0, "{}  |  {}".format(self.weight_data, datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")))
         weight_2.configure(state='disabled')
         weight_2.position_x = weight_1.position_x + int(weight_1.cget('width')) + 5
         weight_2.position_y = weight_1.position_y
@@ -439,7 +441,7 @@ class Pikanto(WindowViews):
                         bg_color = 'grey'
                         indicator_text = 'pending'
                     indicator = MyTexBox(col_1, text=indicator_text, bg_color="#ffffff",
-                                         fg_color=bg_color, height=(d_h / 2)-5, width=(d_w / 2) - 10, x=5, y=25,
+                                         fg_color=bg_color, height=(d_h / 2) - 5, width=(d_w / 2) - 10, x=5, y=25,
                                          text_color="#000000", font_size=12, corner_radius=50).create_obj()
                     indicator.place(x=5, y=25)
 
@@ -616,6 +618,18 @@ class Pikanto(WindowViews):
             haulier = response['hauliers']
 
         return customer, haulier
+
+    def check_internet_connection(self):
+        """checks that device has internet connection and notifies user"""
+        word = "Your device does not have internet connection. Please connect to an active network!"
+
+        def run_notification():
+            while not func.is_internet_connected():
+                self.update_status(' ')
+                self.display_word_letter_by_letter(word)
+            self.update_status('Internet Connection was restored!')
+
+        self.thread_request(run_notification)
 
 
 if __name__ == "__main__":

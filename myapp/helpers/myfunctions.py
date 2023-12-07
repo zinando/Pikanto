@@ -6,6 +6,7 @@ import serial
 import time
 from appclasses.file_class import FileHandler
 import re
+import socket
 
 
 def notify_user(msg=None):
@@ -39,13 +40,15 @@ def save_files_to_app(filepath, location):
 
 
 def addspace(obj_position, obj_size):
-    """Gets the position of the object and then adds up the size of the object to give the position of the point where the span of the obj ended"""
+    """Gets the position of the object and then adds up the size of the object to
+     give the position of the point where the span of the obj ended
+    """
     return obj_position + obj_size
 
 
 def get_mass():
     # ser = serial.Serial(port='/dev/ttyS0', ## if using Linux serial
-    ser = serial.Serial("COM3",
+    ser = serial.Serial("COM2",
                         baudrate=9600,
                         parity=serial.PARITY_NONE,
                         stopbits=serial.STOPBITS_ONE,
@@ -62,10 +65,12 @@ def get_mass():
 
     value = decode_byte(value)
 
+    value = digits_between_sequences(value, str(32))
+
     if ser.isOpen():
         ser.close()
 
-    return value
+    return int(value)
 
 
 def decode_byte(byte_value):
@@ -78,6 +83,51 @@ def decode_byte(byte_value):
     for w in new_x:
         k += w[2:]
     return k
+
+
+def digits_between_sequences(larger_sequence, sequence_to_find):
+    """
+    Finds digits between consecutive occurrences of a given sequence within a larger sequence.
+
+    Args:
+    - larger_sequence (str): The larger sequence to search within.
+    - sequence_to_find (str): The specific sequence to find within the larger sequence.
+
+    Returns:
+    - str: A string containing the digits found between consecutive occurrences
+           of the specified sequence within the larger sequence.
+    """
+    result = ""
+    start = 0
+    while True:
+        # Find the next occurrence of the sequence within the larger sequence
+        start_idx = larger_sequence.find(sequence_to_find, start)
+        if start_idx == -1:  # If no more occurrences found, break the loop
+            break
+
+        # Move the starting index after the current sequence to look for the next occurrence
+        start = start_idx + len(sequence_to_find)
+
+        # Find the end index for the next occurrence of the sequence
+        end_idx = larger_sequence.find(sequence_to_find, start)
+        if end_idx == -1:  # If no more occurrences found, break the loop
+            break
+
+        # Extract the digits between the two occurrences and add them to the result
+        result += larger_sequence[start:end_idx]
+
+    return result
+
+
+def is_internet_connected():
+    """checks if the system is connected to the internet or not"""
+    try:
+        # Attempt to connect to a well-known website (in this case, Google's DNS server)
+        socket.create_connection(("8.8.8.8", 53), timeout=3)
+        return True  # If connection succeeds, return True
+    except OSError:
+        pass
+    return False  # If connection fails, return False
 
 
 def is_valid_email(email: str) -> bool:

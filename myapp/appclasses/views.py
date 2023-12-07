@@ -277,13 +277,8 @@ class CreateAppView(ctk.CTk):
 
     def show_scale_data(self):
         """Retrieves the reading on the scale with the set port number"""
-        port = '/COM3'
-        baudrate = 9600
-        parity = serial.PARITY_NONE
-        stopbits = serial.STOPBITS_ONE
-        bytesize = serial.EIGHTBITS
-
         val = func.get_mass()
+        self.weight_data = val
         self.display_data(val)
 
         return
@@ -390,7 +385,7 @@ class CreateAppView(ctk.CTk):
             self.update_status('Stop operation failed with the error: ' + str(e))
             self.state_objects['server_status_text'].configure(text='Failed to stop.')
 
-    def display_text(self, text=None):
+    def display_textxxx(self, text=None):
         """Displays continuous text on the screen letter_by_letter"""
         if self.status_message is None:
             if text:
@@ -411,6 +406,32 @@ class CreateAppView(ctk.CTk):
                 self.status_report_display.configure(text=y)
 
         self.status_report_display.after(5000, self.display_text)
+
+    def display_text(self, text=None):
+        """Displays continuous text on the screen letter_by_letter"""
+        if text:
+            self.buffer_text = text
+
+        if self.buffer_text:
+            words = self.buffer_text.split()
+            self.clear_display()
+            for word in words:
+                self.display_word_letter_by_letter(word)
+                time.sleep(0.5)  # Adjust the delay between words as needed
+                self.status_report_display.configure(text=self.status_report_display.cget("text") + " ")
+
+        # Schedule the function to run again after 5 seconds
+        self.status_report_display.after(5000, self.display_text)
+
+    def clear_display(self):
+        self.status_report_display.configure(text="")
+        self.update()
+
+    def display_word_letter_by_letter(self, word):
+        for letter in word:
+            self.status_report_display.configure(text=self.status_report_display.cget("text") + letter)
+            self.update()
+            time.sleep(0.1)  # Adjust the delay between letters as needed
 
     def create_server_indicator_objects(self, window, w, h, x, y):
         """creates the indicator for server status and its side text"""
@@ -452,3 +473,9 @@ class CreateAppView(ctk.CTk):
 
         return
 
+    def thread_request(self, func, *args, **kwargs):
+        """Starts a thread that invokes functions for specific actions"""
+        # Start a thread to handle the database operation
+        thread = threading.Thread(target=func, args=args, kwargs=kwargs)
+        thread.daemon = True  # Daemonize the thread to avoid issues on application exit
+        thread.start()
