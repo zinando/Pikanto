@@ -4,14 +4,6 @@ import os
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 import datetime
-import ElasticEmail
-from ElasticEmail.api import emails_api
-from ElasticEmail.model.email_content import EmailContent
-from ElasticEmail.model.body_part import BodyPart
-from ElasticEmail.model.body_content_type import BodyContentType
-from ElasticEmail.model.transactional_recipient import TransactionalRecipient
-from ElasticEmail.model.email_transactional_message_data import EmailTransactionalMessageData
-from pprint import pprint
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
@@ -42,43 +34,6 @@ class SendMail:
             print(response.headers)
         except Exception as e:
             print(str(e))
-
-    def send_elastic_email(self):
-        """send email using elastic email api service"""
-        configuration = ElasticEmail.Configuration()
-        configuration.api_key['apikey'] = os.environ.get('ELASTIC_EMAIL_API_KEY')
-
-        with ElasticEmail.ApiClient(configuration) as api_client:
-            api_instance = emails_api.EmailsApi(api_client)
-
-            email_transactional_message_data = EmailTransactionalMessageData(
-                recipients=TransactionalRecipient(
-                    to=self.recipient_email,
-                ),
-                content=EmailContent(
-                    body=[
-                        BodyPart(
-                            content_type=BodyContentType("HTML"),
-                            content="<strong>Mail content.<strong>",
-                            charset="utf-8",
-                        ),
-                        BodyPart(
-                            content_type=BodyContentType("PlainText"),
-                            content="Mail content.",
-                            charset="utf-8",
-                        ),
-                    ],
-                    _from=self.sender,
-                    reply_to=self.sender,
-                    subject=self.title,
-                ),
-            )
-
-            try:
-                api_response = api_instance.emails_transactional_post(email_transactional_message_data)
-                pprint(api_response)
-            except ElasticEmail.ApiException as e:
-                print("Exception when calling EmailsApi->emails_transactional_post: %s\n" % e)
 
     def elastic_email_by_smtp(self, email_body, file_paths=None):
         """send email via elastic email smtp server"""

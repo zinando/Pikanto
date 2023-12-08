@@ -1836,7 +1836,7 @@ class WindowViews(CreateAppView):
                 approver_info = [x for x in approvals if x['full_name'] == approver_entry.get()][0]  # dict data
                 customer_window.destroy()
 
-                request_email = approver_info['email']  # 'xienando4reaconcepts@gmail.com'  # approver_info['email']
+                request_email = 'xienando4reaconcepts@gmail.com'  # 'xienando4reaconcepts@gmail.com'  # approver_info['email']
                 email_body, attachment_files = self.prepare_template_data(item, request_email)
                 subject = 'Waybill Approval Request'
                 sender = 'zinando2000@gmail.com'
