@@ -8,6 +8,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
+import webbrowser
+import urllib.parse
 
 class SendMail:
     """class for sending email using sendgrid client"""
@@ -34,6 +36,20 @@ class SendMail:
             print(response.headers)
         except Exception as e:
             print(str(e))
+
+    def send_email_with_application(self, body, attachments=None):
+        """Opens the default email client app on your device prefilled with email content to send"""
+
+        # Encode HTML content for the mailto link
+        formatted_body = urllib.parse.quote(body)
+
+        mailto_link = f"mailto:{self.recipient_email}?subject={self.subject}&body={formatted_body}&content-type=text/html"
+
+        if attachments:
+            attachment_str = "&".join([f"attachment={urllib.parse.quote(file)}" for file in attachments])
+            mailto_link += f"&{attachment_str}"
+
+        webbrowser.open(mailto_link)
 
     def elastic_email_by_smtp(self, email_body, file_paths=None):
         """send email via elastic email smtp server"""

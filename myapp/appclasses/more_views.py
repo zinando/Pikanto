@@ -7,7 +7,8 @@ from appclasses.buttonclass import MyButton
 from appclasses.textbox_class import MyTexBox
 from helpers import myfunctions as func
 import tkinter as tk
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageGrab
+import webbrowser
 from tkinter import ttk
 from appclasses.file_class import FileHandler
 import customtkinter as ctk
@@ -1043,6 +1044,13 @@ class WindowViews(CreateAppView):
                                                    anchor="w")
             transporter_value_label.grid(row=6, column=1, padx=5, pady=5, sticky="w")
 
+            def print_widget():
+                self.generate_printable_view(top, 1200, 1550, top.winfo_x(), top.winfo_y())
+
+            # Create a button for printing
+            print_button = tk.Button(waybill_frame, text="Print", command=print_widget)
+            print_button.pack()
+
             # create product headers
 
             top.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -1836,12 +1844,13 @@ class WindowViews(CreateAppView):
                 approver_info = [x for x in approvals if x['full_name'] == approver_entry.get()][0]  # dict data
                 customer_window.destroy()
 
-                request_email = 'xienando4reaconcepts@gmail.com'  # 'xienando4reaconcepts@gmail.com'  # approver_info['email']
+                request_email = 'samuel.n@ugeechemicals.com'  # 'xienando4reaconcepts@gmail.com'  # approver_info['email']
                 email_body, attachment_files = self.prepare_template_data(item, request_email)
                 subject = 'Waybill Approval Request'
-                sender = 'zinando2000@gmail.com'
+                sender = 'belovedsamex@yahoo.com'  # 'zinando2000@gmail.com'
                 messenger = SendMail(sender, request_email, subject)
-                messenger.elastic_email_by_smtp(email_body, attachment_files)
+                messenger.send_email_with_application("Please click me: https://google.com", attachment_files)
+                # messenger.elastic_email_by_smtp(email_body, attachment_files)
 
                 self.update_status('Email sent successfully.')
                 self.toplevel_sub_window = None
@@ -2015,3 +2024,23 @@ class WindowViews(CreateAppView):
 
         template = self.generate_email_template(table1_data, table2_data, table3_data, table4_data, email, itemm.id)
         return template, files
+
+    def generate_printable_view(self, tk_widget, w,h,x,y):
+        # Assuming 'top' is the name of your Toplevel widget
+        top = tk_widget
+        if top:
+            # Grab the screen content of the widget
+            #x = top.winfo_rootx()
+            #y = top.winfo_rooty()
+            width = w # top.winfo_width()
+            height = h #top.winfo_height()
+
+            # Capture the content as an image
+            image = ImageGrab.grab(bbox=(x, y, x + width, y + height))
+
+            # Save the captured image
+            image_file = "printable_view.png"
+            image.save(image_file)
+
+            # Open the saved image file using the default system image viewer
+            webbrowser.open(image_file)
