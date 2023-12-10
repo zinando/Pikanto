@@ -320,7 +320,10 @@ def fetch_table_data(weight_log_id):
     bad_product_list = json.loads(waybill_data.bad_product_info)
 
     # files
-    files = json.loads(waybill_data.file_link)
+    if waybill_data.file_link:
+        files = json.loads(waybill_data.file_link)
+    else:
+        files = []
 
     ticket_data = slip  # dict
     waybill_data = wb_data  # dict

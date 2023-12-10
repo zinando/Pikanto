@@ -116,7 +116,7 @@ def digits_between_sequences(larger_sequence, sequence_to_find):
         # Extract the digits between the two occurrences and add them to the result
         result += larger_sequence[start:end_idx]
 
-    return resultresult[:7]
+    return result[:7]
 
 
 def is_internet_connected():

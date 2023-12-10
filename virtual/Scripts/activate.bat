@@ -1,4 +1,4 @@
-@set "VIRTUAL_ENV=C:\Users\Administrator\Desktop\Pikanto\virtual"
+@set "VIRTUAL_ENV=C:\Users\User\OneDrive - SIL Chemicals Limited\Documents\GitHub\Pikanto\virtual"
 
 @set "VIRTUAL_ENV_PROMPT="
 @if NOT DEFINED VIRTUAL_ENV_PROMPT (

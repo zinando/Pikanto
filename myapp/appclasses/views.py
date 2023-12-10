@@ -11,11 +11,12 @@ import requests
 import os
 import time
 import random
-import serial
+import serial 
 
 
 class CreateAppView(ctk.CTk):
     """This class creates the various views after the main window is created"""
+    weight_data = None
 
     def __init__(self):
         """initialized with the properties of the main window class"""
@@ -30,7 +31,7 @@ class CreateAppView(ctk.CTk):
         self.record_view_display = None
         self.status_message = None
         self.unit = "Kg"
-        self.weight_data = None
+        #self.weight_data = None
         self.resizable(False, False)
         width, height = 1000, 600
         self.w, self.h = width, height
@@ -317,7 +318,8 @@ class CreateAppView(ctk.CTk):
 
         if self.weight_data:
             load_data()
-            self.data_display_label.after(300, self.display_data)
+            #self.data_display_label.after(300, self.display_data)
+            return
         else:
             return
 
