@@ -1,5 +1,5 @@
 import threading
-
+from datetime import datetime
 from appclasses.labelclass import MyLabel
 from appclasses.email_class import SendMail
 from appclasses.views import CreateAppView
@@ -8,9 +8,12 @@ from appclasses.textbox_class import MyTexBox
 from helpers import myfunctions as func
 import tkinter as tk
 from PIL import Image, ImageTk, ImageGrab
+import tempfile
+import subprocess
+import os
+import platform
 import webbrowser
 from tkinter import ttk
-from appclasses.file_class import FileHandler
 import customtkinter as ctk
 from appclasses.toplevel_class import DialogueBox
 from appclasses.report_messenger import Messenger
@@ -32,318 +35,6 @@ class WindowViews(CreateAppView):
         self.counter = 0
         self.bad_counter = 0
 
-    def open_waybill_formxxxx(self, item):
-        """creates a window for adding waybill data to weight records"""
-        files = []
-
-        # create a dialogue box that allows the user to enter waybill data
-        if self.toplevel_window is None:
-            # stop the status display
-            self.status_message = 'stop'
-
-            # create the dialogue box
-            my_dialogue_box = DialogueBox(650, 480, fg_color='grey')
-            my_dialogue_box.title('WAYBILL FORM')
-
-            # create 6 rows for the entry widgets, 4 widgets per row
-
-            # row 1
-            d_h = my_dialogue_box.height // 6
-            d_w = my_dialogue_box.width
-            x, y = 0, 0
-            row_1 = MyLabel(my_dialogue_box, text="", bg_color="grey", fg_color="grey", height=d_h, width=d_w,
-                            x=x, y=y).create_obj()
-            row_1.place(x=x, y=y)
-
-            h = 40
-            w = (int(row_1.cget('width')) - 40) // 4
-            x = 5
-            y = (int(row_1.cget('height')) - h) // 2
-            waybill_number = ctk.CTkEntry(row_1, placeholder_text="Enter waybill number", width=w,
-                                          height=h)
-            waybill_number.place(x=x, y=y)
-            self.selected_value['waybill_number'] = waybill_number
-
-            x = x + int(waybill_number.cget('width')) + 5
-            company_ref = ctk.CTkEntry(row_1, placeholder_text="Enter Company Reference", width=w,
-                                       height=h)
-            company_ref.place(x=x, y=y)
-            self.selected_value['company_ref'] = company_ref
-
-            x = x + int(company_ref.cget('width')) + 5
-            customers = {'name_1': 1, 'name_2': 2, 'name_3': 3, 'name_4': 4}
-            customer = ctk.CTkComboBox(row_1, values=list(customers.keys()), width=w,
-                                       height=h, corner_radius=5)
-            customer.set('Select customer')
-            customer.place(x=x, y=y)
-
-            def customer_callback(choice):
-                """function to execute when a customer item is selected"""
-                self.status_message = 'wait'
-                self.selected_value['customer_id'] = customers.get(choice)
-                self.status_message = None
-
-            customer.configure(command=customer_callback)
-
-            x = x + int(customer.cget('width')) + 5
-            address = ctk.CTkEntry(row_1, placeholder_text="Enter delivery address", width=w,
-                                   height=h)
-            address.place(x=x, y=y)
-            self.selected_value['address'] = address
-
-            # row 2
-            x = 0
-            y = int(row_1.cget('height')) + row_1.position_y
-            row_2 = MyLabel(my_dialogue_box, text="", bg_color="grey", fg_color="grey", height=d_h, width=d_w,
-                            x=x, y=y).create_obj()
-            row_2.place(x=x, y=y)
-
-            w = (int(row_2.cget('width')) - 40) // 4
-            x, y = 5, (int(row_2.cget('height')) - h) // 2
-            description = ctk.CTkEntry(row_2, placeholder_text="Enter product description", width=w,
-                                       height=h)
-            description.place(x=x, y=y)
-            self.selected_value['description'] = description
-
-            x = x + int(description.cget('width')) + 10
-            item_code = ctk.CTkEntry(row_2, placeholder_text="Enter item code", width=w,
-                                     height=h)
-            item_code.place(x=x, y=y)
-            self.selected_value['item_code'] = item_code
-
-            x = x + int(item_code.cget('width')) + 10
-            product_count = ctk.CTkEntry(row_2, placeholder_text="Enter Number cases/bags", width=w,
-                                         height=h)
-            product_count.place(x=x, y=y)
-            self.selected_value['product_count'] = product_count
-
-            x = x + int(product_count.cget('width')) + 10
-            product_weight = ctk.CTkEntry(row_2, placeholder_text="Enter product weight", width=w,
-                                          height=h)
-            product_weight.place(x=x, y=y)
-            self.selected_value['product_weight'] = product_weight
-
-            # row 3
-            x = 0
-            y = int(row_2.cget('height')) + row_2.position_y
-            row_3 = MyLabel(my_dialogue_box, text="", bg_color="grey", fg_color="grey", height=d_h, width=d_w,
-                            x=x, y=y).create_obj()
-            row_3.place(x=x, y=y)
-
-            w = (int(row_3.cget('width')) - 30) // 4
-            x, y = 5, (int(row_2.cget('height')) - h) // 2
-            accepted_qty = ctk.CTkEntry(row_3, placeholder_text="Enter accepted quantity", width=w,
-                                        height=h)
-            accepted_qty.place(x=x, y=y)
-            self.selected_value['accepted_qty'] = accepted_qty
-
-            x = x + int(accepted_qty.cget('width')) + 5
-            product_condition = ctk.CTkComboBox(row_3, values=['good', 'bad'], width=w,
-                                                height=h, corner_radius=5)
-            product_condition.set('Product condition')
-            product_condition.place(x=x, y=y)
-
-            def condition_callback(choice):
-                self.status_message = 'wait'
-                self.selected_value['product_condition'] = choice
-                self.status_message = None
-
-            product_condition.configure(command=condition_callback)
-
-            x = x + int(product_condition.cget('width')) + 5
-            damaged_qty = ctk.CTkEntry(row_3, placeholder_text="Enter damaged qty", width=w,
-                                       height=h)
-            damaged_qty.place(x=x, y=y)
-            self.selected_value['damaged_qty'] = damaged_qty
-
-            x = x + int(damaged_qty.cget('width')) + 5
-            shortage = ctk.CTkEntry(row_3, placeholder_text="Enter product shortage", width=w,
-                                    height=h)
-            shortage.place(x=x, y=y)
-            self.selected_value['shortage'] = shortage
-
-            # row 4
-            x = 0
-            y = int(row_3.cget('height')) + row_3.position_y
-            row_4 = MyLabel(my_dialogue_box, text="", bg_color="grey", fg_color="grey", height=d_h, width=d_w,
-                            x=x, y=y).create_obj()
-            row_4.place(x=x, y=y)
-
-            w = (int(row_4.cget('width')) - 40) // 4
-            x, y = 5, (int(row_4.cget('height')) - h) // 2
-            batch_number = ctk.CTkEntry(row_4, placeholder_text="Enter batch number", width=w,
-                                        height=h)
-            batch_number.place(x=x, y=y)
-            self.selected_value['batch_number'] = batch_number
-
-            x = x + int(batch_number.cget('width')) + 10
-            receiver = ctk.CTkEntry(row_4, placeholder_text="Enter your name", width=w,
-                                    height=h)
-            receiver.place(x=x, y=y)
-            self.selected_value['receiver'] = receiver
-
-            x = x + int(receiver.cget('width')) + 10
-            delivered_by = ctk.CTkEntry(row_4, placeholder_text="Enter driver name", width=w,
-                                        height=h)
-            delivered_by.place(x=x, y=y)
-            self.selected_value['delivered_by'] = delivered_by
-
-            x = x + int(delivered_by.cget('width')) + 5
-            remarks = ctk.CTkEntry(row_4, placeholder_text="Remarks", width=w,
-                                   height=h)
-            remarks.place(x=x, y=y)
-            self.selected_value['remarks'] = remarks
-
-            # division 5
-            x = 0
-            y = int(row_4.cget('height')) + row_4.position_y
-            row_5 = MyLabel(my_dialogue_box, text='', bg_color="grey", fg_color="grey",
-                            height=d_h, width=d_w, x=x, y=y).create_obj()
-            row_5.place(x=x, y=y)
-
-            w = 150
-            x = 470
-            y = (int(row_5.cget('height')) - h) // 2
-            upload_btn = MyButton(row_5, text='Select files', width=w, font_size=16,
-                                  text_color="#ffbf00", bg_color="grey", fg_color="#6699cc",
-                                  corner_radius=8, height=h, x=x, y=y).create_obj()
-            upload_btn.place(x=upload_btn.position_x, y=upload_btn.position_y)
-
-            file_listbox = tk.Listbox(row_5, cnf={'bg': 'grey'}, selectmode=tk.MULTIPLE, width=85, height=6,
-                                      font=("Arial", 13))
-            file_listbox.place(x=10, y=15)
-
-            def delete_file_from_listbox(file_path):
-                """removes a selected file from the listbox"""
-                index = file_listbox.get(0, tk.END).index(file_path)
-                file_listbox.delete(index)
-                file_listbox.delete(index)  # Remove the delete button associated with the file
-
-            def select_action():
-                """allows user to select multiple files"""
-                nonlocal files  # Accessing files from the outer scope
-                new_file_paths = tk.filedialog.askopenfilenames()
-                self.toplevel_window.focus()
-                count = 1
-                for file_path in new_file_paths:
-                    if file_path in file_listbox.get(0, tk.END):
-                        message = f"File '{file_path}' already added!"
-                        func.notify_user(message)
-                        self.toplevel_window.focus()
-                        raise ValueError(message)
-                    file_listbox.insert(tk.END, file_path)
-                    # Get the base name of the file
-                    base_name = os.path.basename(file_path)
-                    # Include file object and base name in the files list
-                    files.append((f'file_{count}', (open(file_path, 'rb'), base_name)))
-                    count += 1
-
-            upload_btn.configure(command=select_action)
-
-            # division 6
-            x = 0
-            y = int(row_5.cget('height')) + row_5.position_y
-            row_6 = MyLabel(my_dialogue_box, text='', bg_color="#c9c9c9",
-                            fg_color="#c9c9c9", height=d_h, width=d_w, x=x, y=y).create_obj()
-            row_6.place(x=x, y=y)
-
-            w = 200
-            x = ((int(row_6.cget('width')) // 2) - w) // 2
-            y = (int(row_6.cget('height')) - h) // 2
-            cancel_btn = MyButton(row_6, text='Cancel', width=w, font_size=16,
-                                  text_color="#ffbf00", bg_color="#c9c9c9", fg_color="#6699cc",
-                                  corner_radius=0, height=h, x=x, y=y).create_obj()
-            cancel_btn.place(x=cancel_btn.position_x, y=cancel_btn.position_y)
-
-            x = int(row_6.cget('width')) // 2 + x
-            y = cancel_btn.position_y
-            submit_btn = MyButton(row_6, text='Submit', width=w, font_size=16,
-                                  text_color="#ffbf00", bg_color="#c9c9c9", fg_color="#6699cc", corner_radius=0,
-                                  height=h, x=x, y=y).create_obj()
-            submit_btn.place(x=x, y=y)
-
-            def cancel_action():
-                """closes the record form"""
-                my_dialogue_box.destroy()
-                self.toplevel_window = None
-
-            def submit_form_entries():
-                """processes entry data and submits it for saving in the database"""
-                submit_btn.configure(text="Processing, please wait...")
-                submit_btn.place(x=x, y=y)
-
-                # check if the select items were selected
-                try:
-                    pc = self.selected_value['product_condition']
-                    cid = self.selected_value['customer_id']
-                except KeyError:
-                    func.notify_user('You did not select one option')
-                    self.toplevel_window.focus()
-                    submit_btn.configure(text="Submit")
-                    return
-
-                data = self.selected_value
-                mr = {}
-                mr['waybill_number'] = data['waybill_number'].get()
-                mr['company_ref'] = data['company_ref'].get()
-                mr['address'] = data['address'].get()
-                mr['description'] = data['description'].get()
-                mr['vehicle_id'] = item.vehicle_id
-                mr['item_code'] = data['item_code'].get()
-                mr['product_count'] = data['product_count'].get()
-                mr['product_weight'] = data['product_weight'].get()
-                mr['accepted_qty'] = data['accepted_qty'].get()
-                mr['damaged_qty'] = data['damaged_qty'].get()
-                mr['shortage'] = data['shortage'].get()
-                mr['batch_number'] = data['batch_number'].get()
-                mr['receiver'] = data['receiver'].get()
-                mr['delivered_by'] = data['delivered_by'].get()
-                mr['remarks'] = data['remarks'].get()
-                mr['weight_log_id'] = item.id
-                mr['product_condition'] = data['product_condition']
-                mr['customer_id'] = data['customer_id']
-
-                # process the files
-                files_dict = dict(files)
-
-                messenger = Messenger(self.server_url, '/create_waybill?action=save_data')
-                resp = messenger.query_server(data=mr)
-                if resp['status'] == 1:
-                    messenger = Messenger(self.server_url,
-                                          '/create_waybill?action=save_file&waybill_id={}&vehicle_id={}' \
-                                          .format(resp['data']['waybill_id'], resp['data']['vehicle_id']))
-                    response = messenger.query_server(files=files_dict)
-                    self.update_status(response['message'])
-                else:
-                    self.update_status(resp['message'])
-                return
-
-            def thread_request():
-                """Starts a thread that processes form and data and sends it to the database for storage"""
-                submit_btn.configure(text="Processing...")
-
-                # Start a thread to handle the database operation
-                thread = threading.Thread(target=submit_form_entries)
-                thread.daemon = True  # Daemonize the thread to avoid issues on application exit
-                thread.start()
-
-                # After starting the thread, update the button text back to its original state
-                thread.join(timeout=15)  # Wait for the thread to finish, with a timeout if needed
-                submit_btn.configure(text="Submit")
-                time.sleep(3)
-                my_dialogue_box.destroy()
-                self.toplevel_window = None
-
-            cancel_btn.configure(command=cancel_action)
-            submit_btn.configure(command=thread_request)
-
-            my_dialogue_box.protocol("WM_DELETE_WINDOW", self.on_closing)
-            my_dialogue_box.focus_set()
-            self.toplevel_window = my_dialogue_box
-
-        else:
-            self.toplevel_window.focus()
-
     def get_files_dict(self, file_listbox):
         """Generates a files dictionary from the file listbox"""
         files = {}
@@ -358,705 +49,522 @@ class WindowViews(CreateAppView):
             count += 1
         return files
 
-    def display_data_detailsx(self, ticket_data=None, waybill_data=None):
-        """
-        Function to display the Weighbridge Slip in a top-level window.
+    def display_data_details(self, data):
+        # fetch the required data
+        ticket, waybill, products, bad_products, files, approvals_data = self.fetch_details_data(data)
+        if ticket is None:
+            return
 
-        It creates a table displaying Weighbridge Slip data and fields for entering
-        the driver's name and signature.
-        """
-        ticket_data = {
-            "Date": "2023-12-01",
-            "Vehicle ID": "ABC123",
-            "Customer": "Customer A",
-            "Haulier": "Haulier A",
-            "Destination": "Destination A",
-            "Product": "Product A",
-            "Ticket Number": "T123",
-            "Delivery Number": "D456",
-            "Order Number": "O789",
-            "Gross Mass": "1000 kg",
-            "Tare Mass": "500 kg",
-            "Net Mass": "500 kg",
-        }
+        ticket_data = ticket
 
-        company_info_data = {
-            "Waybill Number": "WB001",
-            "Date": "2023-12-01",
-            "Location": "Location A",
-            "Ugee Ref Number": "UR001",
-            "Customer Ref Number": "CR001",
-            "Customer Name": "Customer A",
-            "Delivery Address": "Address A",
-            "Vehicle ID": "V001",
-            "Transporter": "Transporter A"
-            # Add more company info data as needed...
-        }
-
-        product_data = [
-            {
-                "Product Description": "Product A",
-                "Item Code": "001",
-                "Number of Packages": 5,
-                "Quantity": 100,
-                "Accepted Quantity": 90,
-                "Remarks": "Some remarks"
-            },
-            # Add more product data as needed...
-        ]
-
-        bad_products_info = [
-            {
-                "product_description": "Damaged Product A",
-                "damaged_quantity": 5,
-                "shortage_quantity": 2,
-                "batch_number": "B001"
-            },
-            # Add more bad products info dictionaries as needed...
-        ]
-
-        top_level = tk.Toplevel(self)
-        top_level.title("Weighbridge")
-
-        # Create a frame for the table
-        ticket_frame = ctk.CTkFrame(top_level)
-        ticket_frame.pack(fill=tk.X)
-
-        # Create a title label for "Weighbridge Slip"
-        title_label = ttk.Label(ticket_frame, text="Weighbridge Slip", font=("TkDefaultFont", 16, "bold"))
-        title_label.pack(pady=10)
-
-        # Create Treeview widget
-        ticket_tree = ttk.Treeview(ticket_frame, columns=("Key", "Value"), show="headings")
-        ticket_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        # Define columns
-        ticket_tree.heading("Key", text="Attributes")
-        ticket_tree.heading("Value", text="Values")
-
-        # Insert data into the treeview
-        for key, value in ticket_data.items():
-            ticket_tree.insert("", "end", values=(key, value))
-            ticket_tree.tag_configure('column', font=("Arial", 16, "bold"), foreground="black")
-
-        # Add fields for driver's name and signature in the same row
-        driver_frame = ttk.Frame(top_level)
-        driver_frame.pack(pady=10)
-
-        driver_name_label = ttk.Label(driver_frame, text="Driver's Name:")
-        driver_name_label.grid(row=0, column=0, padx=5)
-
-        driver_name_entry = ttk.Entry(driver_frame)
-        driver_name_entry.grid(row=0, column=1, padx=5)
-
-        driver_signature_label = ttk.Label(driver_frame, text="Driver's Signature:")
-        driver_signature_label.grid(row=0, column=2, padx=5)
-
-        driver_signature_entry = ttk.Entry(driver_frame)
-        driver_signature_entry.grid(row=0, column=3, padx=5)
-
-        # Load and resize the image
-        img = Image.open('static/assets/images/logo/mylogo.PNG')
-        img = img.resize((img.width, min(img.height, 150)), Image.BILINEAR)
-        img = ImageTk.PhotoImage(img)
-
-        # Create a frame for the image
-        image_frame = tk.Frame(top_level)
-        image_frame.pack()
-
-        # Display the resized image
-        image_label = tk.Label(image_frame, image=img)
-        image_label.image = img  # Keep a reference to the image
-        image_label.pack(pady=10)
-
-        # Create a label for "WAYBILL INFORMATION" with black background
-        waybill_label = tk.Label(top_level, text="WAYBILL INFORMATION", bg="black", fg="white",
-                                 font=("Arial", 16, "bold"))
-        waybill_label.pack()
-
-        # Create a table for company information
-        company_info_frame = ttk.Frame(top_level)
-        company_info_frame.pack(fill=tk.X)
-
-        company_info_table = ttk.Treeview(company_info_frame, columns=("Attribute", "Value"), show="headings")
-        company_info_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        company_info_table.heading("Attribute", text="Attribute")
-        company_info_table.heading("Value", text="Value")
-
-        for key, value in company_info_data.items():
-            company_info_table.insert("", "end", values=(key, value))
-            company_info_table.tag_configure('column', font=("Arial", 16, "bold"))
-
-        # Create the second table for product information
-        product_frame = ttk.Frame(top_level)
-        product_frame.pack()
-
-        product_table = ttk.Treeview(product_frame, columns=("Description", "Item Code", "Packages",
-                                                             "Quantity", "Accepted Quantity", "Remarks"),
-                                     show="headings")
-        product_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        product_table.heading("Description", text="Product Description")
-        product_table.heading("Item Code", text="Item Code")
-        product_table.heading("Packages", text="Number of Packages")
-        product_table.heading("Quantity", text="Quantity")
-        product_table.heading("Accepted Quantity", text="Accepted Quantity")
-        product_table.heading("Remarks", text="Remarks")
-
-        # make the headings bold
-        for col in product_table["columns"]:
-            product_table.heading(col, text=col, anchor=tk.W)
-            product_table.tag_configure(col, font=("Arial", 16, "bold"), foreground="black")
-
-        for item in product_data:
-            product_table.insert("", "end", values=(
-                item["Product Description"],
-                item["Item Code"],
-                item["Number of Packages"],
-                item["Quantity"],
-                item["Accepted Quantity"],
-                item["Remarks"]
-            ))
-
-        # Create a table footer for total under product description
-        footer_frame = ttk.Frame(top_level)
-        footer_frame.pack()
-
-        footer_label = ttk.Label(footer_frame, text="Total:", font=("TkDefaultFont", 14, "bold"))
-        footer_label.grid(row=0, column=0, padx=5)
-
-        footer_value_label = ttk.Label(footer_frame, text="Value", font=("TkDefaultFont", 14, "bold"))
-        footer_value_label.grid(row=0, column=1, padx=5)
-
-        # Create a label for "Bad/Damaged Products"
-        bad_products_label = ttk.Label(top_level, text="Bad/Damaged Products", font=("Arial", 14, "bold"))
-        bad_products_label.pack()
-
-        # Create the third table for bad/damaged products information
-        bad_products_frame = ttk.Frame(top_level)
-        bad_products_frame.pack(fill=tk.X)
-
-        bad_products_table = ttk.Treeview(bad_products_frame, columns=("product_description", "damaged_quantity",
-                                                                       "shortage_quantity", "batch_number"),
-                                          show="headings")
-        bad_products_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        bad_products_table.heading("product_description", text="Product Description")
-        bad_products_table.heading("damaged_quantity", text="Damaged Quantity")
-        bad_products_table.heading("shortage_quantity", text="Shortage Quantity")
-        bad_products_table.heading("batch_number", text="Batch Number")
-
-        for product_info in bad_products_info:
-            bad_products_table.insert("", "end", values=(
-                product_info["product_description"],
-                product_info["damaged_quantity"],
-                product_info["shortage_quantity"],
-                product_info["batch_number"]
-            ))
-
-        # Create a label for approvals frame
-        approval_label = ttk.Label(top_level, text="Approvals", font=("Arial", 18, "bold"))
-        approval_label.pack()
-
-        # Create the frame for approvals table
-        approvals_frame = ttk.Frame(top_level)
-        approvals_frame.pack(fill=tk.X)
-
-        # Create the approvals table
-        approvals_table = ttk.Treeview(approvals_frame, columns=("Received By", "Delivered By", "Authorized By"),
-                                       show="headings")
-        approvals_table.pack(fill=tk.X)
-
-        approvals_table.heading("Received By", text="Received By")
-        approvals_table.heading("Delivered By", text="Delivered By")
-        approvals_table.heading("Authorized By", text="Authorized By")
-
-        # Insert rows for Name, Signature, and Date under each header
-        info = {"receiver": "WHSE Technician ", "receiver_signature": "...........", "receiver_date": "Today",
-                "deliverer": "Driver", "deliverer_signature": "..............: ", "deliverer_date": "Today",
-                "approver": "Plant Manager", "approver_signature": "...............: ", "approver_date": "Today"}
-
-        approvals_table.insert("", "end", values=(
-            f"Name:    {info['receiver']}\n\nSignature:     {info['receiver_signature']}\n\nDate:     {info['receiver_date']}",
-            f"Name:    {info['deliverer']}\n\nSignature:    {info['deliverer_signature']}\n\nDate:    {info['deliverer_date']}",
-            f"Name:    {info['approver']}\n\nSignature:     {info['approver_signature']}\n\nDate:     {info['approver_date']}",
-        ))
-
-    def display_data_detailsv(self, ticket_data=None, waybill_data=None):
-        """
-        Function to display the Weighbridge Slip in a top-level window.
-
-        It creates a table displaying Weighbridge Slip data and fields for entering
-        the driver's name and signature.
-        """
-        ticket_data = {
-            "date": "2023-12-01",
-            "vehicle_id": "ABC123",
-            "customer_name": "Customer A",
-            "haulier": "Haulier A",
-            "destination": "Destination A",
-            "product": "Product A",
-            "ticket_number": "T123",
-            "delivery_number": "D456",
-            "order_number": "O789",
-            "final_weight": "1000 kg",
-            "initial_weight": "500 kg",
-            "net_weight": "500 kg",
-            "driver": "Olayinka Agboola"
-        }
-
-        company_info_data = {
-            "Waybill Number": "WB001",
-            "Date": "2023-12-01",
-            "Location": "Location A",
-            "Ugee Ref Number": "UR001",
-            "Customer Ref Number": "CR001",
-            "Customer Name": "Customer A",
-            "Delivery Address": "Address A",
-            "Vehicle ID": "V001",
-            "Transporter": "Transporter A"
-            # Add more company info data as needed...
-        }
-
-        product_data = [
-            {
-                "Product Description": "Product A",
-                "Item Code": "001",
-                "Number of Packages": 5,
-                "Quantity": 100,
-                "Accepted Quantity": 90,
-                "Remarks": "Some remarks"
-            },
-            # Add more product data as needed...
-        ]
-
-        bad_products_info = [
-            {
-                "product_description": "Damaged Product A",
-                "damaged_quantity": 5,
-                "shortage_quantity": 2,
-                "batch_number": "B001"
-            },
-            # Add more bad products info dictionaries as needed...
-        ]
-
-        if self.toplevel_window is None:
-            top_level = ctk.CTkToplevel(self)
-            top_level.geometry("{}x{}".format(650, 900))
-            top_level.title("Weighbridge")
-
-            # Load and resize the image
-            img_original = Image.open('assets/images/ugee_header.PNG')
-            img_tk = ImageTk.PhotoImage(img_original)
-
-            img_label = tk.Label(top_level, text="my image", image=img_tk)
-            img_label.pack()
-
-            # Create a frame for ticket
-            ticket_frame = ctk.CTkFrame(top_level)
-            # ticket_frame.grid(row=1, column=0, columnspan=1, padx=5, sticky="ew")
-            ticket_frame.pack(fill=tk.X, pady=0)
-
-            # Create a title label for "Weighbridge Slip"
-            ticket_title_label = ctk.CTkLabel(ticket_frame, text="WEIGHBRIDGE SLIP", font=("TkDefaultFont", 18, "bold"))
-            ticket_title_label.pack(fill=tk.X, pady=10)
-
-            # create a label to display the ticket information
-            ticket_content_label = ctk.CTkLabel(ticket_frame, text="")
-            ticket_content_label.pack(fill=tk.X, pady=10)
-
-            # create labels for each content data
-            # row 1
-            date_label = ctk.CTkLabel(ticket_content_label, text="Date:", width=50)
-            date_label.grid(row=0, column=0, padx=5, pady=5)
-            date_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['date'], width=50)
-            date_value_label.grid(row=0, column=1, padx=5, pady=5)
-            ticket_number_label = ctk.CTkLabel(ticket_content_label, text="Ticket Number:", width=50)
-            ticket_number_label.grid(row=0, column=2, padx=5, pady=5)
-            ticket_number_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['ticket_number'], width=50)
-            ticket_number_value_label.grid(row=0, column=3, padx=5, pady=5)
-
-            # row 2
-            vehicle_label = ctk.CTkLabel(ticket_content_label, text="Vehicle Reg:", width=50)
-            vehicle_label.grid(row=1, column=0, padx=5, pady=5)
-            vehicle_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['vehicle_id'], width=50)
-            vehicle_value_label.grid(row=1, column=1, padx=5, pady=5)
-            delivery_number_label = ctk.CTkLabel(ticket_content_label, text="Delivery Number:", width=50)
-            delivery_number_label.grid(row=1, column=2, padx=5, pady=5)
-            delivery_number_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['delivery_number'],
-                                                       width=50)
-            delivery_number_value_label.grid(row=1, column=3, padx=5, pady=5)
-
-            # row 3
-            customer_label = ctk.CTkLabel(ticket_content_label, text="Customer:", width=50)
-            customer_label.grid(row=2, column=0, padx=5, pady=5)
-            customer_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['customer_name'], width=50)
-            customer_value_label.grid(row=2, column=1, padx=5, pady=5)
-            order_number_label = ctk.CTkLabel(ticket_content_label, text="Order Number:", width=50)
-            order_number_label.grid(row=2, column=2, padx=5, pady=5)
-            order_number_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['order_number'], width=50)
-            order_number_value_label.grid(row=2, column=3, padx=5, pady=5)
-
-            # row 4
-            haulier_label = ctk.CTkLabel(ticket_content_label, text="Haulier:", width=50)
-            haulier_label.grid(row=3, column=0, padx=5, pady=5)
-            haulier_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['haulier'], width=50)
-            haulier_value_label.grid(row=3, column=1, padx=5, pady=5)
-            destination_label = ctk.CTkLabel(ticket_content_label, text="Destination:", width=50)
-            destination_label.grid(row=3, column=2, padx=5, pady=5)
-            destination_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['destination'], width=50)
-            destination_value_label.grid(row=3, column=3, padx=5, pady=5)
-
-            # row 5
-            product_label = ctk.CTkLabel(ticket_content_label, text="Product:", width=50)
-            product_label.grid(row=4, column=0, padx=5, pady=5)
-            product_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['product'], width=50)
-            product_value_label.grid(row=4, column=1, padx=5, pady=5)
-            # ticket_number_label = ctk.CTkLabel(ticket_content_label, text="Ticket Number:", width=50)
-            # ticket_number_label.grid(row=0, column=2, padx=5, pady=5)
-            # ticket_number_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['ticket_number'], width=50)
-            # ticket_number_value_label.grid(row=0, column=3, padx=5, pady=5)
-
-            # row 6
-            first_weight_label = ctk.CTkLabel(ticket_content_label, text="Gross Mass:", width=50)
-            first_weight_label.grid(row=5, column=0, padx=5, pady=5)
-            first_weight_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['final_weight'], width=50)
-            first_weight_value_label.grid(row=5, column=1, padx=5, pady=5)
-
-            # row 7
-            second_weight_label = ctk.CTkLabel(ticket_content_label, text="Tare Mass:", width=50)
-            second_weight_label.grid(row=6, column=0, padx=5, pady=5)
-            second_weight_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['initial_weight'], width=50)
-            second_weight_value_label.grid(row=6, column=1, padx=5, pady=5)
-
-            # row 8
-            net_weight_label = ctk.CTkLabel(ticket_content_label, text="Net Mass:", width=50)
-            net_weight_label.grid(row=7, column=0, padx=5, pady=5)
-            net_weight_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['net_weight'], width=50)
-            net_weight_value_label.grid(row=7, column=1, padx=5, pady=5)
-
-            # row 9
-            driver_label = ctk.CTkLabel(ticket_content_label, text="Driver Name:", width=50)
-            driver_label.grid(row=7, column=0, padx=5, pady=5)
-            driver_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['driver'], width=50)
-            driver_value_label.grid(row=7, column=1, padx=5, pady=5)
-            signature_label = ctk.CTkLabel(ticket_content_label, text="Driver Signature:", width=50)
-            signature_label.grid(row=7, column=0, padx=5, pady=5)
-            signature_value_label = ctk.CTkLabel(ticket_content_label, text="............................", width=50)
-            signature_value_label.grid(row=7, column=1, padx=5, pady=5)
-
-            self.toplevel_window = top_level
+        if waybill:
+            company_info_data = waybill
         else:
-            self.toplevel_window.focus()
+            company_info_data = {
+                "waybill_number": "",
+                "date": "",
+                "location": "",
+                "company_ref": "",
+                "customer_ref": "",
+                "customer_name": "",
+                "address": "",
+                "vehicle_id": "",
+                "transporter": ""
+            }
 
-    def display_data_details(self):
-        ticket_data = {
-            "date": "2023-12-01",
-            "vehicle_id": "ABC123",
-            "customer_name": "Customer A",
-            "haulier": "Haulier A",
-            "destination": "Destination A",
-            "product": "Product A",
-            "ticket_number": "T123",
-            "delivery_number": "D456",
-            "order_number": "O789",
-            "final_weight": "1000 kg",
-            "initial_weight": "500 kg",
-            "net_weight": "500 kg",
-            "driver": "Olayinka Agboola"
-        }
+        product_data = products
 
-        company_info_data = {
-            "waybill_number": "WB001",
-            "date": "2023-12-01",
-            "location": "Location A",
-            "company_ref": "UR001",
-            "customer_ref": "CR001",
-            "customer_name": "Customer A",
-            "address": "Address A",
-            "vehicle_id": "V001",
-            "transporter": "Transporter A"
-            # Add more company info data as needed...
-        }
-
-        product_data = [
-            {
-                "Product Description": "Product A",
-                "Item Code": "001",
-                "Number of Packages": 5,
-                "Quantity": 100,
-                "Accepted Quantity": 90,
-                "Remarks": "Some remarks"
-            },
-            # Add more product data as needed...
-        ]
-
-        bad_products_info = [
-            {
-                "product_description": "Damaged Product A",
-                "damaged_quantity": 5,
-                "shortage_quantity": 2,
-                "batch_number": "B001"
-            },
-            # Add more bad products info dictionaries as needed...
-        ]
+        bad_products_info = bad_products
 
         # Create the main window
         if self.toplevel_window is None:
+            # Create the main window to fill the screen
             top = tk.Toplevel(self)
             self.toplevel_window = top
-            top.geometry("{}x{}".format(1200, 1550))
-            top.title("Three Frames Example")
+            screen_width = top.winfo_screenwidth()
+            screen_height = top.winfo_screenheight()
+            print("screen is: {}x{}".format(screen_width, screen_height))
+            top.geometry(f"{screen_width}x{screen_height}")
+            top.title("Logistics Operations Information")
+            # top.overrideredirect(True)
+            # top.attributes('-fullscreen', True)
 
-            # Create three frames
-            image_frame = tk.Frame(top)
-            ticket_frame = tk.Frame(top)
-            waybill_frame = tk.Frame(top)
+            # Create a frame to hold the ticket and waybill frames side by side
+            main_frame = tk.Frame(top)
+            main_frame.pack(fill=tk.BOTH, expand=True)
 
-            # Pack frames to fill the entire window
-            image_frame.pack(fill=tk.X)
-            ticket_frame.pack(fill=tk.X)
-            waybill_frame.pack(fill=tk.X)
+            # Create submain_frame_1 to hold ticket_frame and action_buttons_frame
+            submain_frame_1 = tk.Frame(main_frame)
+            submain_frame_1.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-            # Placeholder image
-            # Replace 'path_to_your_image.jpg' with the path to your image file
-            placeholder_image = Image.open('assets/images/ugee_header.PNG')
-            image_width, image_height = placeholder_image.size
+            # Create the ticket frame inside submain_frame_1
+            ticket_frame = self.create_ticket_detail(submain_frame_1, ticket_data)
+            ticket_frame.pack(fill=tk.BOTH, expand=True)
 
-            # Resize the image to fit the width of the window
-            window_width = 1200
-            ratio = window_width / image_width
-            new_height = int(image_height * ratio)
-            resized_image = placeholder_image.resize((window_width, new_height), Image.ANTIALIAS)
+            # Create the action buttons frame inside submain_frame_1
+            action_buttons_frame = tk.Frame(submain_frame_1)
+            action_buttons_frame.pack(fill=tk.X)
 
-            # Convert image for Tkinter
-            img = ImageTk.PhotoImage(resized_image)
+            # Create the print button for the ticket frame
+            ticket_print_button = ctk.CTkButton(action_buttons_frame, text="Print Ticket", height=25, width=50,
+                                                bg_color="#F0F0F0", fg_color="grey", text_color="#ffffff")
+            ticket_print_button.pack()
 
-            # Create a label for the image and display it in the image frame
-            image_label = tk.Label(image_frame, image=img)
-            image_label.image = img  # Keep a reference to avoid garbage collection
-            image_label.pack(fill=tk.X)
+            # Create a thick line between the frames
+            separator = tk.Frame(main_frame, width=3, bd=0, relief=tk.SUNKEN)
+            separator.pack(side=tk.LEFT, fill=tk.Y)
 
-            # Create a title label for "Weighbridge Slip"
-            ticket_title_label = ctk.CTkLabel(ticket_frame, text="WEIGHBRIDGE SLIP",
-                                              font=("TkDefaultFont", 18, "bold"), text_color="blue",
-                                              fg_color="#ffffff")
-            ticket_title_label.pack(fill=tk.X, pady=10)
+            # Create submain_frame_2 to hold waybill_frame and waybill_action_buttons_frame
+            submain_frame_2 = tk.Frame(main_frame)
+            submain_frame_2.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-            # create a label to display the ticket information
-            ticket_content_label = tk.Frame(ticket_frame, bg="#ffffff")
-            ticket_content_label.pack(fill=tk.X)
+            # Create the waybill frame inside submain_frame_2
+            waybill_frame = self.create_waybill_detail(submain_frame_2, company_info_data, product_data,
+                                                       bad_products_info, approvals_data)
+            waybill_frame.pack(fill=tk.BOTH, expand=True)
 
-            # create labels for each content data
-            # row 1
-            date_label = ctk.CTkLabel(ticket_content_label, text="Date:", width=50, anchor="w",
-                                      font=("TkDefaultFont", 14, "bold"))
-            date_label.grid(row=0, column=0, padx=5, sticky="w")
-            date_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['date'], width=50, anchor="w")
-            date_value_label.grid(row=0, column=1, padx=5, sticky="w")
-            ticket_number_label = ctk.CTkLabel(ticket_content_label, text="Ticket Number:", width=50, anchor="w",
-                                               font=("TkDefaultFont", 14, "bold"))
-            ticket_number_label.grid(row=0, column=2, padx=5, sticky="w")
-            ticket_number_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['ticket_number'],
-                                                     width=50, anchor="w")
-            ticket_number_value_label.grid(row=0, column=3, padx=5, sticky="w")
+            # Create the action buttons frame for waybill inside submain_frame_2
+            waybill_action_buttons_frame = tk.Frame(submain_frame_2)
+            waybill_action_buttons_frame.pack(fill=tk.X)
 
-            # row 2
-            vehicle_label = ctk.CTkLabel(ticket_content_label, text="Vehicle Reg:", width=50, anchor="w",
-                                         font=("TkDefaultFont", 14, "bold"))
-            vehicle_label.grid(row=1, column=0, padx=5, sticky="w")
-            vehicle_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['vehicle_id'],
-                                               width=50, anchor="w")
-            vehicle_value_label.grid(row=1, column=1, padx=5, sticky="w")
-            delivery_number_label = ctk.CTkLabel(ticket_content_label, text="Delivery Number:", width=50, anchor="w",
-                                                 font=("TkDefaultFont", 14, "bold"))
-            delivery_number_label.grid(row=1, column=2, padx=5, sticky="w")
-            delivery_number_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['delivery_number'],
-                                                       width=50, anchor="w")
-            delivery_number_value_label.grid(row=1, column=3, padx=5, sticky="w")
+            # Create the print button for the waybill frame
+            waybill_print_button = ctk.CTkButton(waybill_action_buttons_frame, text="Print Waybill", height=25,
+                                                 width=70, bg_color="#F0F0F0", fg_color="grey",
+                                                 text_color="#ffffff")
+            waybill_print_button.grid(row=0, column=0, padx=10)
 
-            # row 3
-            customer_label = ctk.CTkLabel(ticket_content_label, text="Customer:", width=50, anchor="w",
-                                          font=("TkDefaultFont", 14, "bold"))
-            customer_label.grid(row=2, column=0, padx=5, pady=5, sticky="w")
-            customer_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['customer_name'],
-                                                width=50, anchor="w")
-            customer_value_label.grid(row=2, column=1, padx=5, pady=5, sticky="w")
-            order_number_label = ctk.CTkLabel(ticket_content_label, text="Order Number:", width=50, anchor="w",
-                                              font=("TkDefaultFont", 14, "bold"))
-            order_number_label.grid(row=2, column=2, padx=5, pady=5, sticky="w")
-            order_number_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['order_number'],
-                                                    width=50, anchor="w")
-            order_number_value_label.grid(row=2, column=3, padx=5, pady=5, sticky="w")
+            # Create button for approval of the waybill
+            waybill_approval_button = ctk.CTkButton(waybill_action_buttons_frame, text="Approve Waybill", height=25,
+                                                    width=70, bg_color="#F0F0F0", fg_color="grey",
+                                                    text_color="#ffffff")
+            waybill_approval_button.grid(row=0, column=1, padx=10)
 
-            # row 4
-            haulier_label = ctk.CTkLabel(ticket_content_label, text="Haulier:", width=50, anchor="w",
-                                         font=("TkDefaultFont", 14, "bold"))
-            haulier_label.grid(row=3, column=0, padx=5, pady=5, sticky="w")
-            haulier_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['haulier'], width=50, anchor="w")
-            haulier_value_label.grid(row=3, column=1, padx=5, pady=5, sticky="w")
-            destination_label = ctk.CTkLabel(ticket_content_label, text="Destination:", width=50, anchor="w",
-                                             font=("TkDefaultFont", 14, "bold"))
-            destination_label.grid(row=3, column=2, padx=5, pady=5, sticky="w")
-            destination_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['destination'],
-                                                   width=50, anchor="w")
-            destination_value_label.grid(row=3, column=3, padx=5, pady=5, sticky="w")
+            if data.approval_status == "approved" or not data.waybill_ready or not data.final_weight:
+                waybill_approval_button.configure(state='disabled')
 
-            # row 5
-            product_label = ctk.CTkLabel(ticket_content_label, text="Product:", width=50, anchor="w",
-                                         font=("TkDefaultFont", 14, "bold"))
-            product_label.grid(row=4, column=0, padx=5, pady=5, sticky="w")
-            product_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['product'], width=50, anchor="w")
-            product_value_label.grid(row=4, column=1, padx=5, pady=5, sticky="w")
+            def thread_request():
+                thread = threading.Thread(target=self.approve_waybill, args=[data.id])
+                thread.daemon = True  # Daemonize the thread to avoid issues on application exit
+                thread.start()
 
-            # row 6
-            first_weight_label = ctk.CTkLabel(ticket_content_label, text="Gross Mass:", width=50, anchor="w",
-                                              font=("TkDefaultFont", 14, "bold"))
-            first_weight_label.grid(row=5, column=0, padx=5, pady=5, sticky="w")
-            first_weight_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['final_weight'],
-                                                    width=50, anchor="w")
-            first_weight_value_label.grid(row=5, column=1, padx=5, pady=5, sticky="w")
+            waybill_approval_button.configure(command=thread_request)
 
-            # row 7
-            second_weight_label = ctk.CTkLabel(ticket_content_label, text="Tare Mass:", width=50, anchor="w",
-                                               font=("TkDefaultFont", 14, "bold"))
-            second_weight_label.grid(row=6, column=0, padx=5, pady=5, sticky="w")
-            second_weight_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['initial_weight'],
-                                                     width=50, anchor="w")
-            second_weight_value_label.grid(row=6, column=1, padx=5, pady=5, sticky="w")
+            def print_ticket():
+                top.update()
+                width = ticket_frame.winfo_width()
+                height = ticket_frame.winfo_height()
+                x = submain_frame_1.winfo_x()
+                y = submain_frame_1.winfo_y()
+                print(f"x: {x}, y: {y}, w: {width}, h: {height}")
+                self.generate_printable_view(ticket_frame, width, height, x, y)
 
-            # row 8
-            net_weight_label = ctk.CTkLabel(ticket_content_label, text="Net Mass:", width=50, anchor="w",
-                                            font=("TkDefaultFont", 14, "bold"))
-            net_weight_label.grid(row=7, column=0, padx=5, pady=5, sticky="w")
-            net_weight_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['net_weight'],
-                                                  width=50, anchor="w")
-            net_weight_value_label.grid(row=7, column=1, padx=5, pady=5, sticky="w")
+            def print_waybill():
+                top.update()
+                width = waybill_frame.winfo_width()
+                height = waybill_frame.winfo_height()
+                x = submain_frame_2.winfo_x()
+                y = submain_frame_2.winfo_y()
+                print(f"x: {x}, y: {y}, w: {width}, h: {height}")
+                self.generate_printable_view(waybill_frame, width, height, x, y)
 
-            # row 9
-            driver_label = ctk.CTkLabel(ticket_content_label, text="Driver Name:", width=50, anchor="w",
-                                        font=("TkDefaultFont", 14, "bold"))
-            driver_label.grid(row=7, column=0, padx=5, pady=5, sticky="w")
-            driver_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['driver'],
-                                              width=50, anchor="w")
-            driver_value_label.grid(row=7, column=1, padx=5, pady=5, sticky="w")
-            signature_label = ctk.CTkLabel(ticket_content_label, text="Driver Signature:", width=50, anchor="w",
-                                           font=("TkDefaultFont", 14, "bold"))
-            signature_label.grid(row=7, column=2, padx=5, pady=5, sticky="w")
-            signature_value_label = ctk.CTkLabel(ticket_content_label, text="............................",
-                                                 width=50, anchor="w")
-            signature_value_label.grid(row=7, column=3, padx=5, pady=5, sticky="w")
-
-            # create a title for the waybill
-            waybill_title_label = ctk.CTkLabel(waybill_frame, text="WAYBILL",
-                                               font=("TkDefaultFont", 18, "bold"), text_color="blue",
-                                               fg_color="#ffffff")
-            waybill_title_label.pack(fill=tk.X, pady=10)
-
-            # create a Frame for the contents
-            waybill_content_frame = tk.Frame(waybill_frame, bg="#ffffff")
-            waybill_content_frame.pack(fill=tk.X)
-
-            # After creating the waybill_content_frame
-            waybill_canvas = tk.Canvas(waybill_content_frame, height=400)
-            waybill_scrollbar = tk.Scrollbar(waybill_content_frame, orient="vertical", command=waybill_canvas.yview)
-            waybill_scrollable_frame = tk.Frame(waybill_canvas)
-
-            waybill_canvas.create_window((0, 0), window=waybill_scrollable_frame, anchor="nw")
-            waybill_canvas.configure(yscrollcommand=waybill_scrollbar.set)
-
-            # Pack the scrollbar to the right side and expand the canvas
-            waybill_scrollbar.pack(side="right", fill="y")
-            waybill_canvas.pack(side="left", fill="both", expand=True)
-
-            # Configure scrollbar and canvas
-            waybill_canvas.bind("<Configure>",
-                                lambda e: waybill_canvas.configure(scrollregion=waybill_canvas.bbox("all")))
-
-            # "waybill_number": "WB001",
-            # "date": "2023-12-01",
-            # "location": "Location A",
-            # "company_ref": "UR001",
-            # "customer_ref": "CR001",
-            # "customer_name": "Customer A",
-            # "address": "Address A",
-            # "vehicle_id": "V001",
-            # "transporter": "Transporter A"
-
-            # create labels for company info
-            waybill_number_label = ctk.CTkLabel(waybill_scrollable_frame, text="Waybill Number:", anchor="w",
-                                                font=("TkDefaultFont", 14, "bold"))
-            waybill_number_label.grid(row=0, column=0, padx=5, sticky="w")
-            waybill_number_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['waybill_number'],
-                                                      anchor="w")
-            waybill_number_value_label.grid(row=0, column=1, padx=5, sticky="w")
-            date2_label = ctk.CTkLabel(waybill_scrollable_frame, text="Date:", anchor="w",
-                                       font=("TkDefaultFont", 14, "bold"))
-            date2_label.grid(row=0, column=2, padx=5, sticky="w")
-            date2_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['date'], anchor="w")
-            date2_value_label.grid(row=0, column=3, padx=5, sticky="w")
-            location_label = ctk.CTkLabel(waybill_scrollable_frame, text="Location:", anchor="w",
-                                          font=("TkDefaultFont", 14, "bold"))
-            location_label.grid(row=0, column=4, padx=5, sticky="w")
-            location_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['location'], anchor="w")
-            location_value_label.grid(row=0, column=5, padx=5, sticky="w")
-
-            company_ref_label = ctk.CTkLabel(waybill_scrollable_frame, text="Ugee Reference No:", anchor="w",
-                                             font=("TkDefaultFont", 14, "bold"))
-            company_ref_label.grid(row=1, column=0, padx=5, pady=5, sticky="w")
-            company_ref_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['company_ref'],
-                                                   anchor="w")
-            company_ref_value_label.grid(row=1, column=1, padx=5, pady=5, sticky="w")
-
-            customer_ref_label = ctk.CTkLabel(waybill_scrollable_frame, text="Customer Ref No:", anchor="w",
-                                              font=("TkDefaultFont", 14, "bold"))
-            customer_ref_label.grid(row=2, column=0, padx=5, pady=5, sticky="w")
-            customer_ref_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['customer_ref'],
-                                                    anchor="w")
-            customer_ref_value_label.grid(row=2, column=1, padx=5, pady=5, sticky="w")
-
-            customer_name_label = ctk.CTkLabel(waybill_scrollable_frame, text="Customer Name:", anchor="w",
-                                               font=("TkDefaultFont", 14, "bold"))
-            customer_name_label.grid(row=3, column=0, padx=5, pady=5, sticky="w")
-            customer_name_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['customer_name'],
-                                                     anchor="w")
-            customer_name_value_label.grid(row=3, column=1, padx=5, pady=5, sticky="w")
-
-            address_label = ctk.CTkLabel(waybill_scrollable_frame, text="Delivery Address:", anchor="w",
-                                         font=("TkDefaultFont", 14, "bold"))
-            address_label.grid(row=4, column=0, padx=5, pady=5, sticky="w")
-            address_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['address'],
-                                               anchor="w")
-            address_value_label.grid(row=4, column=1, padx=5, pady=5, sticky="w")
-
-            vehicle_id_label = ctk.CTkLabel(waybill_scrollable_frame, text="Vehicle No:", anchor="w",
-                                            font=("TkDefaultFont", 14, "bold"))
-            vehicle_id_label.grid(row=5, column=0, padx=5, pady=5, sticky="w")
-            vehicle_id_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['vehicle_id'],
-                                                  anchor="w")
-            vehicle_id_value_label.grid(row=5, column=1, padx=5, pady=5, sticky="w")
-
-            transporter_label = ctk.CTkLabel(waybill_scrollable_frame, text="Transporter:", anchor="w",
-                                             font=("TkDefaultFont", 14, "bold"))
-            transporter_label.grid(row=6, column=0, padx=5, pady=5, sticky="w")
-            transporter_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['transporter'],
-                                                   anchor="w")
-            transporter_value_label.grid(row=6, column=1, padx=5, pady=5, sticky="w")
-
-            def print_widget():
-                self.generate_printable_view(top, 1200, 1550, top.winfo_x(), top.winfo_y())
-
-            # Create a button for printing
-            print_button = tk.Button(waybill_frame, text="Print", command=print_widget)
-            print_button.pack()
-
-            # create product headers
+            ticket_print_button.configure(command=print_ticket)
+            waybill_print_button.configure(command=print_waybill)
 
             top.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+            # Set weight to make frames equally expandable
+            main_frame.grid_columnconfigure(0, weight=1)
+            main_frame.grid_columnconfigure(2, weight=1)
+
         else:
             self.toplevel_window.focus()
+
+    def create_ticket_detail(self, window, ticket_data):
+        # create a frame for the ticket
+        ticket_frame = tk.Frame(window, bd=3, relief=tk.SUNKEN)
+
+        # create header image
+        w, h = self.get_screen_resolution()
+        image_width = w - 6  # 6 = 2x3 where 3 is the separator thickness btw the two frames
+        image_frame = self.create_header_image(ticket_frame, int(image_width))
+        image_frame.pack(fill=tk.X, pady=5)
+
+        # Create a title label for "Weighbridge Slip"
+        ticket_title_label = ctk.CTkLabel(ticket_frame, text="WEIGHBRIDGE SLIP",
+                                          font=("TkDefaultFont", 18, "bold"), text_color="blue",
+                                          fg_color="#ffffff")
+        ticket_title_label.pack(fill=tk.X, pady=10)
+
+        # create a label to display the ticket information
+        ticket_content_label = tk.Frame(ticket_frame, bg="#ffffff")
+        ticket_content_label.pack(fill=tk.X)
+
+        # create labels for each content data
+        # row 1
+        date_label = ctk.CTkLabel(ticket_content_label, text="Date:", width=50, anchor="w",
+                                  font=("TkDefaultFont", 14, "bold"))
+        date_label.grid(row=0, column=0, padx=5, sticky="w")
+        date_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['date'], width=50, anchor="w")
+        date_value_label.grid(row=0, column=1, padx=5, sticky="w")
+        ticket_number_label = ctk.CTkLabel(ticket_content_label, text="Ticket Number:", width=50, anchor="w",
+                                           font=("TkDefaultFont", 14, "bold"))
+        ticket_number_label.grid(row=0, column=2, padx=5, sticky="w")
+        ticket_number_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['ticket_number'],
+                                                 width=50, anchor="w")
+        ticket_number_value_label.grid(row=0, column=3, padx=5, sticky="w")
+
+        # row 2
+        vehicle_label = ctk.CTkLabel(ticket_content_label, text="Vehicle Reg:", width=50, anchor="w",
+                                     font=("TkDefaultFont", 14, "bold"))
+        vehicle_label.grid(row=1, column=0, padx=5, sticky="w")
+        vehicle_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['vehicle_id'],
+                                           width=50, anchor="w")
+        vehicle_value_label.grid(row=1, column=1, padx=5, sticky="w")
+        delivery_number_label = ctk.CTkLabel(ticket_content_label, text="Delivery Number:", width=50, anchor="w",
+                                             font=("TkDefaultFont", 14, "bold"))
+        delivery_number_label.grid(row=1, column=2, padx=5, sticky="w")
+        delivery_number_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['delivery_number'],
+                                                   width=50, anchor="w")
+        delivery_number_value_label.grid(row=1, column=3, padx=5, sticky="w")
+
+        # row 3
+        customer_label = ctk.CTkLabel(ticket_content_label, text="Customer:", width=50, anchor="w",
+                                      font=("TkDefaultFont", 14, "bold"))
+        customer_label.grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        customer_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['customer_name'],
+                                            width=50, anchor="w")
+        customer_value_label.grid(row=2, column=1, padx=5, pady=5, sticky="w")
+        order_number_label = ctk.CTkLabel(ticket_content_label, text="Order Number:", width=50, anchor="w",
+                                          font=("TkDefaultFont", 14, "bold"))
+        order_number_label.grid(row=2, column=2, padx=5, pady=5, sticky="w")
+        order_number_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['order_number'],
+                                                width=50, anchor="w")
+        order_number_value_label.grid(row=2, column=3, padx=5, pady=5, sticky="w")
+
+        # row 4
+        haulier_label = ctk.CTkLabel(ticket_content_label, text="Haulier:", width=50, anchor="w",
+                                     font=("TkDefaultFont", 14, "bold"))
+        haulier_label.grid(row=3, column=0, padx=5, pady=5, sticky="w")
+        haulier_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['haulier'], width=50, anchor="w")
+        haulier_value_label.grid(row=3, column=1, padx=5, pady=5, sticky="w")
+        destination_label = ctk.CTkLabel(ticket_content_label, text="Destination:", width=50, anchor="w",
+                                         font=("TkDefaultFont", 14, "bold"))
+        destination_label.grid(row=3, column=2, padx=5, pady=5, sticky="w")
+        destination_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['destination'],
+                                               width=50, anchor="w")
+        destination_value_label.grid(row=3, column=3, padx=5, pady=5, sticky="w")
+
+        # row 5
+        product_label = ctk.CTkLabel(ticket_content_label, text="Product:", width=50, anchor="w",
+                                     font=("TkDefaultFont", 14, "bold"))
+        product_label.grid(row=4, column=0, padx=5, pady=5, sticky="w")
+        product_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['product'], width=50, anchor="w")
+        product_value_label.grid(row=4, column=1, padx=5, pady=5, sticky="w")
+
+        # row 6
+        first_weight_label = ctk.CTkLabel(ticket_content_label, text="Gross Mass:", width=50, anchor="w",
+                                          font=("TkDefaultFont", 14, "bold"))
+        first_weight_label.grid(row=5, column=0, padx=5, pady=5, sticky="w")
+        first_weight_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['final_weight'],
+                                                width=50, anchor="w")
+        first_weight_value_label.grid(row=5, column=1, padx=5, pady=5, sticky="w")
+
+        # row 7
+        second_weight_label = ctk.CTkLabel(ticket_content_label, text="Tare Mass:", width=50, anchor="w",
+                                           font=("TkDefaultFont", 14, "bold"))
+        second_weight_label.grid(row=6, column=0, padx=5, pady=5, sticky="w")
+        second_weight_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['initial_weight'],
+                                                 width=50, anchor="w")
+        second_weight_value_label.grid(row=6, column=1, padx=5, pady=5, sticky="w")
+
+        # row 8
+        net_weight_label = ctk.CTkLabel(ticket_content_label, text="Net Mass:", width=50, anchor="w",
+                                        font=("TkDefaultFont", 14, "bold"))
+        net_weight_label.grid(row=7, column=0, padx=5, pady=5, sticky="w")
+        net_weight_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['net_weight'],
+                                              width=50, anchor="w")
+        net_weight_value_label.grid(row=7, column=1, padx=5, pady=5, sticky="w")
+
+        # row 9
+        driver_label = ctk.CTkLabel(ticket_content_label, text="Driver Name:", width=50, anchor="w",
+                                    font=("TkDefaultFont", 14, "bold"))
+        driver_label.grid(row=8, column=0, padx=5, pady=5, sticky="w")
+        driver_value_label = ctk.CTkLabel(ticket_content_label, text=ticket_data['driver'],
+                                          width=50, anchor="w")
+        driver_value_label.grid(row=8, column=1, padx=5, pady=5, sticky="w")
+        signature_label = ctk.CTkLabel(ticket_content_label, text="Driver Signature:", width=50, anchor="w",
+                                       font=("TkDefaultFont", 14, "bold"))
+        signature_label.grid(row=8, column=2, padx=5, pady=5, sticky="w")
+        signature_value_label = ctk.CTkLabel(ticket_content_label, text="............................",
+                                             width=50, anchor="w")
+        signature_value_label.grid(row=8, column=3, padx=5, pady=5, sticky="w")
+
+        return ticket_frame
+
+    def create_waybill_detail(self, window, company_info_data, product_info, bad_product_info, approvals_data):
+        # create a frame for the waybill
+        waybill_frame = tk.Frame(window, bd=3, relief=tk.SUNKEN)
+
+        # create header image
+        w, h = self.get_screen_resolution()
+        image_width = w - 6  # 6 = 2x3 where 3 is the separator thickness btw the two frames
+        image_frame = self.create_header_image(waybill_frame, int(image_width))
+        image_frame.pack(fill=tk.X, pady=5)
+
+        # create a title for the waybill
+        waybill_title_label = ctk.CTkLabel(waybill_frame, text="WAYBILL",
+                                           font=("TkDefaultFont", 18, "bold"), text_color="blue",
+                                           fg_color="#ffffff")
+        waybill_title_label.pack(fill=tk.X, pady=10)
+
+        # create a Frame for the contents
+        waybill_content_frame = tk.Frame(waybill_frame, bg="#ffffff")
+        waybill_content_frame.pack(fill=tk.X)
+
+        # After creating the waybill_content_frame
+        waybill_canvas = tk.Canvas(waybill_content_frame, height=1100)
+        waybill_scrollbar = tk.Scrollbar(waybill_content_frame, orient="vertical", command=waybill_canvas.yview)
+        waybill_scrollable_frame = tk.Frame(waybill_canvas)
+        waybill_products_title_label = ctk.CTkLabel(waybill_canvas, text="Products", width=700,
+                                                    font=("TkDefaultFont", 16, "bold"), text_color="black",
+                                                    fg_color="#ffffff")
+        waybill_products_frame = tk.Frame(waybill_canvas)
+        waybill_bad_products_title_label = ctk.CTkLabel(waybill_canvas, text="Bad/Damaged Products",
+                                                        font=("TkDefaultFont", 16, "bold"), width=700,
+                                                        text_color="black", fg_color="#ffffff")
+        waybill_approvals_frame = tk.Frame(waybill_canvas)
+        waybill_bad_products_frame = tk.Frame(waybill_canvas)
+
+        waybill_canvas.create_window((0, 0), window=waybill_scrollable_frame, anchor="nw")
+        waybill_canvas.configure(yscrollcommand=waybill_scrollbar.set)
+
+        # Pack the scrollbar to the right side and expand the canvas
+        waybill_scrollbar.pack(side="right", fill="y")
+        waybill_canvas.pack(side="left", fill="both", expand=True)
+
+        # Configure scrollbar and canvas
+        waybill_canvas.bind("<Configure>",
+                            lambda e: waybill_canvas.configure(scrollregion=waybill_canvas.bbox("all")))
+
+        # create labels for company info
+
+        # row 1
+        waybill_number_label = ctk.CTkLabel(waybill_scrollable_frame, text="Waybill Number:", anchor="w",
+                                            font=("TkDefaultFont", 14, "bold"), width=140)
+        waybill_number_label.grid(row=0, column=0, padx=5, sticky="w")
+        waybill_number_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['waybill_number'],
+                                                  anchor="w", width=90)
+        waybill_number_value_label.grid(row=0, column=1, padx=5, sticky="w")
+        date2_label = ctk.CTkLabel(waybill_scrollable_frame, text="Date:", anchor="w",
+                                   font=("TkDefaultFont", 14, "bold"), width=120)
+        date2_label.grid(row=0, column=2, padx=5, sticky="w")
+        date2_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['date'],
+                                         anchor="w", width=90)
+        date2_value_label.grid(row=0, column=3, padx=5, sticky="w")
+        location_label = ctk.CTkLabel(waybill_scrollable_frame, text="Location:", anchor="w",
+                                      font=("TkDefaultFont", 14, "bold"), width=110)
+        location_label.grid(row=0, column=4, padx=5, sticky="w")
+        location_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['location'],
+                                            anchor="w", width=90)
+        location_value_label.grid(row=0, column=5, padx=5, sticky="w")
+
+        # row 2
+        company_ref_label = ctk.CTkLabel(waybill_scrollable_frame, text="Ugee Reference No:", anchor="w",
+                                         font=("TkDefaultFont", 14, "bold"), width=140)
+        company_ref_label.grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        company_ref_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['company_ref'],
+                                               anchor="w", width=90)
+        company_ref_value_label.grid(row=1, column=1, padx=5, pady=5, sticky="w")
+
+        customer_ref_label = ctk.CTkLabel(waybill_scrollable_frame, text="Customer Ref No:", anchor="w",
+                                          font=("TkDefaultFont", 14, "bold"), width=120)
+        customer_ref_label.grid(row=1, column=2, padx=5, pady=5, sticky="w")
+        customer_ref_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['customer_ref'],
+                                                anchor="w", width=90)
+        customer_ref_value_label.grid(row=1, column=3, padx=5, pady=5, sticky="w")
+        customer_name_label = ctk.CTkLabel(waybill_scrollable_frame, text="Customer Name:", anchor="w",
+                                           font=("TkDefaultFont", 14, "bold"), width=110)
+        customer_name_label.grid(row=1, column=4, padx=5, pady=5, sticky="w")
+        customer_name_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['customer_name'],
+                                                 anchor="w", width=90)
+        customer_name_value_label.grid(row=1, column=5, padx=5, pady=5, sticky="w")
+
+        # row 3
+        address_label = ctk.CTkLabel(waybill_scrollable_frame, text="Delivery Address:", anchor="w",
+                                     font=("TkDefaultFont", 14, "bold"), width=140)
+        address_label.grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        address_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['address'],
+                                           anchor="w", width=90)
+        address_value_label.grid(row=2, column=1, padx=5, pady=5, sticky="w")
+        vehicle_id_label = ctk.CTkLabel(waybill_scrollable_frame, text="Vehicle No:", anchor="w",
+                                        font=("TkDefaultFont", 14, "bold"), width=120)
+        vehicle_id_label.grid(row=2, column=2, padx=5, pady=5, sticky="w")
+        vehicle_id_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['vehicle_id'],
+                                              anchor="w", width=90)
+        vehicle_id_value_label.grid(row=2, column=3, padx=5, pady=5, sticky="w")
+        transporter_label = ctk.CTkLabel(waybill_scrollable_frame, text="Transporter:", anchor="w",
+                                         font=("TkDefaultFont", 14, "bold"), width=110)
+        transporter_label.grid(row=2, column=4, padx=5, pady=5, sticky="w")
+        transporter_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['transporter'],
+                                               anchor="w", width=90)
+        transporter_value_label.grid(row=2, column=5, padx=5, pady=5, sticky="w")
+
+        waybill_canvas.create_window((0, 200), window=waybill_products_title_label, anchor="nw")
+
+        waybill_canvas.create_window((0, 300), window=waybill_products_frame, anchor="nw")
+
+        # create products detail
+        self.create_product_detail(waybill_products_frame, product_info)
+
+        waybill_canvas.create_window((0, 500), window=waybill_bad_products_title_label, anchor="nw")
+
+        waybill_canvas.create_window((0, 600), window=waybill_bad_products_frame, anchor="nw")
+
+        # create bad products detail
+        self.create_bad_product_detail(waybill_bad_products_frame, bad_product_info)
+
+        waybill_canvas.create_window((0, 800), window=waybill_approvals_frame, anchor="nw")
+
+        # create approval detail
+        self.create_waybill_approvals(waybill_approvals_frame, approvals_data)
+
+        return waybill_frame
+
+    def create_waybill_approvals(self, widget, approvals_data):
+        if approvals_data:
+            data = approvals_data
+        else:
+            data = {}
+            data['approval_status'] = "pending"
+            data['received_by'] = ""
+            data['approval_date'] = ""
+            data['approver'] = ""
+            data['delivered_by'] = ""
+            data['received_date'] = ""
+
+            # create three equal headers for the approvals
+        sn_label = ctk.CTkLabel(widget, text="Received By", width=230, bg_color="#f0f0f0", height=50,
+                                fg_color="#b2acab", text_color="black")
+        sn_label.grid(row=0, column=0)
+        description_label = ctk.CTkLabel(widget, text="Delivered By", width=230, bg_color="#f0f0f0",
+                                         fg_color="#b2acab", text_color="black", height=50)
+        description_label.grid(row=0, column=1)
+        code_label = ctk.CTkLabel(widget, text="Authorized By", width=230, bg_color="#f0f0f0",
+                                  fg_color="#b2acab", text_color="black", height=50)
+        code_label.grid(row=0, column=2)
+
+        # insert values under the headers
+        for x in range(3):
+            text = ""
+            if x == 2:
+                text += f"NAME:   {data['approver']}\n\n" if data['approval_status'] == "approved" else f"NAME:\n\n"
+                text += f"SIGNATURE:   Approved.\n\n" if data['approval_status'] == "approved" else f"SIGNATURE:\n\n"
+                text += f"DATE:   {data['approval_date']}" if data['approval_status'] == "approved" else f"DATE:"
+            elif x == 1:
+                text += f"NAME:   {data['delivered_by']}\n\n"
+                text += f"SIGNATURE:   .................................\n\n"
+                text += f"DATE:   {datetime.now().strftime('%d-%m-%Y %I:%M:%S %p')}" if data[
+                                                                                            'delivered_by'] != "" else f"DATE:\n\n"
+            elif x == 0:
+                text += f"NAME:   {data['received_by']}\n\n"
+                text += f"SIGNATURE:   received by me.\n\n" if data['received_by'] != "" else f"SIGNATURE:\n\n"
+                text += f"DATE:   {data['received_date']}"
+
+            ctk.CTkLabel(widget, text=text, width=230, anchor="w", justify="left").grid(row=1, column=x)
+
+        return
+
+    def create_product_detail(self, widget, product_info):
+        # create labels for the headers
+        sn_label = ctk.CTkLabel(widget, text="S/N", width=30, bg_color="#f0f0f0", height=50,
+                                fg_color="#B2ACAB", text_color="black")
+        sn_label.grid(row=0, column=0)
+        description_label = ctk.CTkLabel(widget, text="Product Description", width=150, bg_color="#f0f0f0",
+                                         fg_color="#B2ACAB", text_color="black", height=50)
+        description_label.grid(row=0, column=1)
+        code_label = ctk.CTkLabel(widget, text="Item Code", width=100, bg_color="#f0f0f0",
+                                  fg_color="#B2ACAB", text_color="black", height=50)
+        code_label.grid(row=0, column=2)
+        packages_label = ctk.CTkLabel(widget, text="No of Packages\n (Bags/Boxes)", width=100, bg_color="#f0f0f0",
+                                      fg_color="#B2ACAB", text_color="black", height=50)
+        packages_label.grid(row=0, column=3)
+        quantity_label = ctk.CTkLabel(widget, text="Quantity\n (MT/NOs)", width=100, bg_color="#f0f0f0",
+                                      fg_color="#B2ACAB", text_color="black", height=50)
+        quantity_label.grid(row=0, column=4)
+        accepted_label = ctk.CTkLabel(widget, text="Accepted\n qty", width=70, bg_color="#f0f0f0",
+                                      fg_color="#B2ACAB", text_color="black", height=50)
+        accepted_label.grid(row=0, column=5)
+        remarks_label = ctk.CTkLabel(widget, text="Remarks", width=150, bg_color="#f0f0f0",
+                                     fg_color="#B2ACAB", text_color="black", height=50)
+        remarks_label.grid(row=0, column=6)
+
+        # populate the table with data
+        counter = 1
+        if product_info:
+            for item in product_info:
+                col = 0
+                ctk.CTkLabel(widget, text=counter, width=30).grid(row=counter, column=col)
+                ctk.CTkLabel(widget, text=item['product_description'], width=100).grid(row=counter, column=col + 1)
+                ctk.CTkLabel(widget, text=item['item_code'], width=100).grid(row=counter, column=col + 2)
+                ctk.CTkLabel(widget, text=item['packages'], width=50).grid(row=counter, column=col + 3)
+                ctk.CTkLabel(widget, text=item['quantity'], width=50).grid(row=counter, column=col + 4)
+                ctk.CTkLabel(widget, text=item['accepted'], width=50).grid(row=counter, column=col + 5)
+                ctk.CTkLabel(widget, text=item['remarks'], width=100).grid(row=counter, column=col + 6)
+                counter += 1
+        return
+
+    def create_bad_product_detail(self, widget, bad_product_info):
+        # create labels for the headers
+        sn_label = ctk.CTkLabel(widget, text="S/N", width=70, bg_color="#f0f0f0",
+                                fg_color="#B2ACAB", text_color="black")
+        sn_label.grid(row=0, column=0)
+        description_label = ctk.CTkLabel(widget, text="Product Description", width=140, bg_color="#f0f0f0",
+                                         fg_color="#B2ACAB", text_color="black")
+        description_label.grid(row=0, column=1)
+        code_label = ctk.CTkLabel(widget, text="Damaged Qty", width=140, bg_color="#f0f0f0",
+                                  fg_color="#B2ACAB", text_color="black")
+        code_label.grid(row=0, column=2)
+        packages_label = ctk.CTkLabel(widget, text="Shortage Qty", width=140, bg_color="#f0f0f0",
+                                      fg_color="#B2ACAB", text_color="black")
+        packages_label.grid(row=0, column=3)
+        quantity_label = ctk.CTkLabel(widget, text="Batch Number", width=210, bg_color="#f0f0f0",
+                                      fg_color="#B2ACAB", text_color="black")
+        quantity_label.grid(row=0, column=4)
+
+        # populate the table with data
+        if bad_product_info:
+            counter = 1
+            for item in bad_product_info:
+                col = 0
+                ctk.CTkLabel(widget, text=counter, width=30).grid(row=counter, column=col)
+                ctk.CTkLabel(widget, text=item['product_description'], width=100).grid(row=counter, column=col + 1)
+                ctk.CTkLabel(widget, text=item['damaged_quantity'], width=100).grid(row=counter, column=col + 2)
+                ctk.CTkLabel(widget, text=item['shortage_quantity'], width=100).grid(row=counter, column=col + 3)
+                ctk.CTkLabel(widget, text=item['batch_number'], width=170).grid(row=counter, column=col + 4)
+                counter += 1
+        return
+
+    def create_header_image(self, window, win_width):
+        image_frame = tk.Frame(window)
+        image_frame.pack(fill=tk.X)
+
+        placeholder_image = Image.open('assets/images/ugee_header.PNG')
+        image_width, image_height = placeholder_image.size
+
+        # Resize the image to fit the width of the window
+        window_width = win_width
+        ratio = window_width / image_width
+        new_height = int(image_height * ratio)
+        resized_image = placeholder_image.resize((window_width, new_height), Image.ANTIALIAS)
+
+        # Convert image for Tkinter
+        img = ImageTk.PhotoImage(resized_image)
+
+        # Create a label for the image and display it in the image frame
+        image_label = tk.Label(image_frame, image=img)
+        image_label.image = img  # Keep a reference to avoid garbage collection
+        image_label.pack(fill=tk.X)
+        return image_frame
 
     def open_customer_entry(self):
         """
@@ -1136,6 +644,13 @@ class WindowViews(CreateAppView):
 
         else:
             self.toplevel_window.focus()
+
+    def get_screen_resolution(self):
+        root = tk.Tk()
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        root.destroy()  # Destroy the Tkinter window after getting the screen dimensions
+        return screen_width, screen_height
 
     def open_haulier_entry(self):
         """
@@ -1844,12 +1359,13 @@ class WindowViews(CreateAppView):
                 approver_info = [x for x in approvals if x['full_name'] == approver_entry.get()][0]  # dict data
                 customer_window.destroy()
 
-                request_email = 'samuel.n@ugeechemicals.com'  # 'xienando4reaconcepts@gmail.com'  # approver_info['email']
+                request_email = approver_info['email']
                 email_body, attachment_files = self.prepare_template_data(item, request_email)
                 subject = 'Waybill Approval Request'
                 sender = 'belovedsamex@yahoo.com'  # 'zinando2000@gmail.com'
                 messenger = SendMail(sender, request_email, subject)
-                messenger.send_email_with_application("Please click me: https://google.com", attachment_files)
+
+                messenger.send_email_with_application(email_body, attachment_files)
                 # messenger.elastic_email_by_smtp(email_body, attachment_files)
 
                 self.update_status('Email sent successfully.')
@@ -2023,24 +1539,147 @@ class WindowViews(CreateAppView):
         table4_data = html
 
         template = self.generate_email_template(table1_data, table2_data, table3_data, table4_data, email, itemm.id)
-        return template, files
 
-    def generate_printable_view(self, tk_widget, w,h,x,y):
-        # Assuming 'top' is the name of your Toplevel widget
-        top = tk_widget
-        if top:
-            # Grab the screen content of the widget
-            #x = top.winfo_rootx()
-            #y = top.winfo_rooty()
-            width = w # top.winfo_width()
-            height = h #top.winfo_height()
+        # prepare a text_based email body instead
 
+        body = "You have been requested to review and approve a waybill information, "
+        body += "please click any of the links below to visit the waybill information page.\n\n"
+
+        body += "NOTE: You will be required to provide your Pikanto app user credentials in order to be able to "
+        body += "append your approval.\n\n"
+        body += f"From mobile device, use this link: https://roughy-topical-easily.ngrok-free.app/approve?email={email}&wtlog_id={itemm.id}\n\n"
+        body += f"From PC use:  http://localhost:8088/approve?email={email}&wtlog_id={itemm.id}"
+
+        return body, files
+
+    def generate_printable_view(self, widget, w, h, x, y):
+        if widget:
             # Capture the content as an image
-            image = ImageGrab.grab(bbox=(x, y, x + width, y + height))
+            image = ImageGrab.grab(bbox=(x, y, x + w, y + h))
 
-            # Save the captured image
-            image_file = "printable_view.png"
-            image.save(image_file)
+            # Save the captured image temporarily
+            temp_image_path = os.path.join(tempfile.gettempdir(), 'printable_view.png')
+            image.save(temp_image_path)
 
-            # Open the saved image file using the default system image viewer
-            webbrowser.open(image_file)
+            # Open the saved image using the default system image viewer
+            try:
+                if platform.system() == 'Darwin':  # For macOS
+                    subprocess.run(['open', temp_image_path])
+                elif platform.system() == 'Windows':  # For Windows
+                    os.startfile(temp_image_path)
+                else:  # For Linux
+                    subprocess.run(['xdg-open', temp_image_path])
+            except FileNotFoundError:
+                func.notify_user("Could not open image with the default viewer. Check your system commands.")
+
+            # delete the temp file when the image viewer has been closed by user
+            def delete_temp_file():
+                try:
+                    while True:
+                        # Check if the image viewer process has terminated
+                        if platform.system() == 'Windows':
+                            subprocess.run(['tasklist', '|', 'findstr', 'Microsoft.Photos.exe'], shell=True,
+                                           stdout=subprocess.DEVNULL)
+                        else:
+                            subprocess.run(['pgrep', '-f', temp_image_path], stdout=subprocess.DEVNULL)
+                        time.sleep(1)
+                except KeyboardInterrupt:  # Handle manual interruption (Ctrl+C)
+                    pass
+                finally:
+                    # Delete the temporary file
+                    try:
+                        os.remove(temp_image_path)
+                    except Exception as e:
+                        func.notify_user(f"Error deleting temporary file: {e}")
+
+            self.thread_request(delete_temp_file)
+
+    def fetch_details_data(self, itemm):
+        # check if there is internet connection
+        if not func.is_internet_connected():
+            self.check_internet_connection()
+            return None, None, None, None, None, None
+
+        ticket_data, waybill_data, products, bad_products, files, approvals_data = None, None, None, None, None, None
+
+        # fetch data needed
+        my_query = Messenger(self.server_url, '/fetch_resources/email_data')
+        response = my_query.query_server({'weight_log_id': itemm.id})
+        if response['status'] == 1:
+            ticket = response['ticket_data']
+            ticket_data = {}
+            ticket_data["date"] = ticket['date']
+            ticket_data["vehicle_id"] = ticket['vehicle id']
+            ticket_data["customer_name"] = ticket['customer']
+            ticket_data["haulier"] = ticket['haulier']
+            ticket_data["destination"] = ticket['destination']
+            ticket_data["product"] = ticket['product']
+            ticket_data["ticket_number"] = ticket['ticket number']
+            ticket_data["delivery_number"] = ticket['delivery number']
+            ticket_data["order_number"] = ticket['order number']
+            ticket_data["final_weight"] = ticket['gross mass']
+            ticket_data["initial_weight"] = ticket['tare mass']
+            ticket_data["net_weight"] = ticket['net mass']
+            ticket_data["driver"] = ticket['driver']
+
+            if 'waybill number' in response['waybill_data']:
+                waybill = response['waybill_data']
+                waybill_data = {}
+                waybill_data["waybill_number"] = waybill['waybill number']
+                waybill_data["date"] = waybill['date']
+                waybill_data["location"] = waybill['location']
+                waybill_data["company_ref"] = waybill['ugee ref number']
+                waybill_data["customer_ref"] = waybill['customer ref number']
+                waybill_data["customer_name"] = waybill['customer name']
+                waybill_data["address"] = waybill['delivery address']
+                waybill_data["vehicle_id"] = waybill['vehicle id']
+                waybill_data["transporter"] = waybill['transporter']
+
+                if len(response['products']) > 0:
+                    products = []
+                    for pro in response['products']:
+                        mr = {}
+                        mr["product_description"] = pro['description']
+                        mr["item_code"] = pro['code']
+                        mr["packages"] = pro['count']
+                        mr["quantity"] = pro['weight']
+                        mr["accepted"] = pro['quantity']
+                        mr["remarks"] = pro['remarks']
+                        products.append(mr)
+
+                if len(response['bad_products']) > 0:
+                    bad_products = []
+                    for pro in response['bad_products']:
+                        mr = {}
+                        mr["product_description"] = pro['description']
+                        mr["damaged_quantity"] = pro['damage']
+                        mr["shortage_quantity"] = pro['shortage']
+                        mr["batch_number"] = pro['batch_number']
+                        bad_products.append(mr)
+
+                if len(response['files']) > 0:
+                    files = response['files']
+
+                approvals_data = response['approvals_data']
+        else:
+            func.notify_user('No records found!')
+
+        return ticket_data, waybill_data, products, bad_products, files, approvals_data
+
+    def approve_waybill(self, weight_log_id):
+        """approves the waybill"""
+        # check if there is internet connection
+        if not func.is_internet_connected():
+            self.check_internet_connection()
+            return
+
+        my_query = Messenger(self.server_url, '/create_waybill?action=approve_waybill')
+        mr = {}
+        mr['weight_log_id'] = weight_log_id
+        mr['approver'] = 'Ndubumma Samuel'
+        # add other user data
+
+        response = my_query.query_server(mr)
+        func.notify_user(response['message'])
+        self.update_status(response['message'])
+        return

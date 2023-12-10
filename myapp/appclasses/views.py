@@ -13,6 +13,7 @@ import time
 import random
 import serial
 
+
 class CreateAppView(ctk.CTk):
     """This class creates the various views after the main window is created"""
 
@@ -385,28 +386,6 @@ class CreateAppView(ctk.CTk):
             self.update_status('Stop operation failed with the error: ' + str(e))
             self.state_objects['server_status_text'].configure(text='Failed to stop.')
 
-    def display_textxxx(self, text=None):
-        """Displays continuous text on the screen letter_by_letter"""
-        if self.status_message is None:
-            if text:
-                self.buffer_text = text
-
-            textlist = self.buffer_text.split()
-            self.status_report_display.configure(text=" ")
-
-            for xk in textlist:
-                count = 0
-                while count < len(xk):
-                    y = self.status_report_display.cget("text")
-                    self.status_report_display.configure(text=y + xk[count])
-                    self.update()
-                    count += 1
-                    time.sleep(0.1)
-                y = self.status_report_display.cget("text") + " "
-                self.status_report_display.configure(text=y)
-
-        self.status_report_display.after(5000, self.display_text)
-
     def display_text(self, text=None):
         """Displays continuous text on the screen letter_by_letter"""
         if text:
@@ -463,15 +442,6 @@ class CreateAppView(ctk.CTk):
         self.state_objects['server_status_text'] = indicator_text
 
         return indicator
-
-    def send_report(self):
-        """sends report to a designated email"""
-        self.update_status('sending report, please wait...')
-        self.status_message = 'wait'
-        SendMail().elastic_email_by_smtp()
-        self.status_message = None
-
-        return
 
     def thread_request(self, func, *args, **kwargs):
         """Starts a thread that invokes functions for specific actions"""

@@ -314,9 +314,26 @@ class Pikanto(WindowViews):
                 mr['weight_2'] = data['weight_2'].get()
                 mr['net_weight'] = data['net_weight'].get()
                 messenger = Messenger(self.server_url, '/update_records')
-            report_label.destroy()
-            resp = messenger.query_server(mr)
-            self.update_status(resp['message'])
+                report_label.destroy()
+                response = messenger.query_server(mr)
+
+                # if successfull, send notification email to WHSE team
+
+                if response['status'] == 1:
+                    self.update_status(response['message'])
+                    self.update_status('Preparing to send notification to WHSE Team, please wait...')
+                    sender = "Gate house security"
+                    request_email = "oluwasegun.a@ugeechemicals.com"
+                    subject = f"Prepare Waybill for {mr['vehicle_id']}"
+                    email_body = "Please prepare waybill for the vehicle ID quoted above.\n\n"
+                    email_body += "Regards,\n\n"
+                    email_body += "Gate House Security Team."
+                    messenger = SendMail(sender, request_email, subject)
+                    messenger.send_email_with_application(email_body)
+            else:
+                report_label.destroy()
+                resp = messenger.query_server(mr)
+                self.update_status(resp['message'])
 
         def thread_request():
             """Starts a thread that processes form and data and sends it to the database for storage"""
@@ -473,7 +490,7 @@ class Pikanto(WindowViews):
                     detail_btn = MyButton(action_btn_wrapper, text="Details", font_size=12,
                                           text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
                                           height=h, width=w, x=x, y=y,
-                                          command=self.display_data_details).create_obj()
+                                          command=partial(self.display_data_details, item)).create_obj()
                     detail_btn.place(x=x, y=y)
 
                     x = detail_btn.position_x + int(detail_btn.cget('width')) + 15

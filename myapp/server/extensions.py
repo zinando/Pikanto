@@ -247,7 +247,6 @@ def approve():
                                   weight_log_id=weight_log_id, response=response)
 
 
-
 @app.route('/save_records', methods=['POST'])
 def records():
     data = request.get_json()
@@ -303,6 +302,7 @@ def update_records():
 @app.route('/create_waybill', methods=['POST'])
 def waybill():
     action = request.args.get('action')
+    print(action)
     if action == 'save_data':
         data = request.get_json()
 
@@ -425,6 +425,26 @@ def waybill():
         worker = resource.fetch_waybill_data(waybill_id)
 
         return json.dumps({'status': 1, 'data': worker, 'message': 'File saved successfully', 'error': [None]})
+
+    elif action == "approve_waybill":
+        data = request.get_json()
+
+        # check if user is authorized to approve
+
+        # approve waybill
+        waybill = WaybillLog.query.filter_by(weight_log_id=data['weight_log_id']).first()
+
+        if waybill:
+            WaybillLog.query.filter_by(weight_log_id=data['weight_log_id']) \
+                .update({'approval_status': 'approved', 'approval_time': datetime.now(),
+                         "approved_by": data['approver']})
+            #db.session.commit()
+
+            message = "Successfully Approved."
+            return json.dumps({'status': 1, 'data': None, 'message': message, 'error': [None]})
+
+        message = "Record Not Found."
+        return json.dumps({'status': 2, 'data': None, 'message': message, 'error': [message]})
 
     message = "invalid request action"
     return json.dumps({'status': 2, 'data': None, 'message': message, 'error': [message]})
@@ -561,8 +581,12 @@ def fetch_resources(item):
 
         # fetch the data
         from server.helpers import resources as resource
+        from server.helpers import myfunctions as myfunc
+
         ticket_data = WeightLog.query.filter_by(wid=data['weight_log_id']).first()
         waybill_data = WaybillLog.query.filter_by(weight_log_id=data['weight_log_id']).first()
+
+        processed_mass = myfunc.process_mass(ticket_data)
 
         # format data
         slip = {}
@@ -575,40 +599,54 @@ def fetch_resources(item):
         slip['ticket number'] = ''
         slip['delivery number'] = ''
         slip['order number'] = ticket_data.order_number
-        slip['gross mass'] = (f"{ticket_data.final_weight} | "
-                              f"{ticket_data.final_time.strftime('%A, %dth of %B, %Y  %I:%M:%S %p')}")
-        slip['tare mass'] = (f"{ticket_data.initial_weight} | "
-                             f"{ticket_data.initial_time.strftime('%A, %dth of %B, %Y  %I:%M:%S %p')}")
-        slip['net mass'] = ticket_data.final_weight - ticket_data.initial_weight
+        slip['gross mass'] = processed_mass['gross_mass']
+        slip['tare mass'] = processed_mass['tare_mass']
+        slip['net mass'] = processed_mass['net_mass']
         slip['driver'] = ticket_data.driver_name
 
         # waybill initial info
         wb_data = {}
-        wb_data['waybill number'] = waybill_data.waybill_number
-        wb_data['date'] = waybill_data.reg_date.strftime('%A, %dth of %B, %Y  %I:%M:%S %p')
-        wb_data['location'] = ''
-        wb_data['ugee ref number'] = 'D844'
-        wb_data['customer ref number'] = waybill_data.customer.registration_number
-        wb_data['customer name'] = waybill_data.customer.customer_name if waybill_data.customer else 'No Name'
-        wb_data['delivery address'] = waybill_data.delivery_address
-        wb_data['vehicle id'] = ticket_data.vehicle_id
-        wb_data['transporter'] = waybill_data.customer.customer_name if waybill_data.customer else 'No Name'
+        product_list = []
+        bad_product_list = []
+        files = []
+        approvals_data = {}
 
-        # product
-        product_list = json.loads(waybill_data.product_info)
+        if waybill_data:
+            wb_data['waybill number'] = waybill_data.waybill_number
+            wb_data['date'] = waybill_data.reg_date.strftime('%A, %dth of %B, %Y  %I:%M:%S %p')
+            wb_data['location'] = ''
+            wb_data['ugee ref number'] = 'D844'
+            wb_data['customer ref number'] = waybill_data.customer.registration_number
+            wb_data['customer name'] = waybill_data.customer.customer_name if waybill_data.customer else 'No Name'
+            wb_data['delivery address'] = waybill_data.delivery_address
+            wb_data['vehicle id'] = ticket_data.vehicle_id
+            wb_data['transporter'] = waybill_data.customer.customer_name if waybill_data.customer else 'No Name'
 
-        # bad products
-        bad_product_list = json.loads(waybill_data.bad_product_info)
+            # product
+            product_list = json.loads(waybill_data.product_info)
 
-        # files
-        files = json.loads(waybill_data.file_link)
+            # bad products
+            bad_product_list = json.loads(waybill_data.bad_product_info)
+
+            # files
+            files = json.loads(waybill_data.file_link)
+
+            # approvals data
+            approvals_data['approval_status'] = waybill_data.approval_status
+            approvals_data['received_by'] = waybill_data.received_by
+            approvals_data['approval_date'] = waybill_data.approval_time.strftime(
+                "%d-%m-%Y %I:%M:%S %p") if waybill_data.approval_time else ""
+            approvals_data['approver'] = waybill_data.approved_by
+            approvals_data['delivered_by'] = waybill_data.delivered_by
+            approvals_data['received_date'] = waybill_data.reg_date.strftime("%d-%m-%Y %I:%M:%S %p")
 
         status = 1
         message = "Resources fetched successfully"
         print('fetched data')
         return json.dumps({'status': status, 'data': None, 'products': product_list,
                            'bad_products': bad_product_list, 'message': message, 'error': [message],
-                           'waybill_data': wb_data, 'ticket_data': slip, 'files': files})
+                           'waybill_data': wb_data, 'ticket_data': slip, 'files': files,
+                           'approvals_data': approvals_data})
 
     return json.dumps({'status': status, 'data': data, 'message': message, 'error': [message]})
 
