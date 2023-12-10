@@ -629,7 +629,8 @@ def fetch_resources(item):
             bad_product_list = json.loads(waybill_data.bad_product_info)
 
             # files
-            files = json.loads(waybill_data.file_link)
+            if waybill_data.file_link:
+                files = json.loads(waybill_data.file_link)
 
             # approvals data
             approvals_data['approval_status'] = waybill_data.approval_status

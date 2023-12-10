@@ -18,8 +18,8 @@ def save_files_to_app(filepath, location):
 
 def process_mass(obj) -> dict:
     """processes the mass data in the obj"""
-    initial_mass = obj.initial_weight
-    final_mass = obj.final_weight
+    initial_mass = int(obj.initial_weight)
+    final_mass = int(obj.final_weight)
 
     mr = {}
     if final_mass:

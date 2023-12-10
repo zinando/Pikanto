@@ -32,13 +32,13 @@ class Pikanto(WindowViews):
     def create_report_form(self):
         """creates the dialogue box for entering email report data"""
         # check for existing initial weight data record for the vehicle (self.selected_value['haulier'])
-        # self.weight_data = 234
+        self.weight_data = 234
         worker = Messenger(self.server_url, '/search/existing_weight_record')
         response = worker.query_server({'vehicle_id': self.selected_value['vehicle_id']})
         record = response['data']
         if record:
             record = DotDict(response['data'])
-            # self.weight_data = self.weight_data * 5
+            self.weight_data = self.weight_data * 7
             header_text = "Update Vehicle Record"
         else:
             header_text = "Create New Record"
@@ -311,7 +311,7 @@ class Pikanto(WindowViews):
             messenger = Messenger(self.server_url, '/save_records')
             if record:
                 mr['weight_1'] = record.initial_weight
-                mr['weight_2'] = data['weight_2'].get()
+                mr['weight_2'] = self.weight_data  # data['weight_2'].get()
                 mr['net_weight'] = data['net_weight'].get()
                 messenger = Messenger(self.server_url, '/update_records')
                 report_label.destroy()
