@@ -81,10 +81,12 @@ class WindowViews(CreateAppView):
             # Create the main window to fill the screen
             top = tk.Toplevel(self)
             self.toplevel_window = top
-            screen_width = top.winfo_screenwidth()
-            screen_height = top.winfo_screenheight()
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
             print("screen is: {}x{}".format(screen_width, screen_height))
-            top.geometry(f"{screen_width}x{screen_height}")
+            top_width = int(screen_width)
+            top_height = int(screen_height * 0.95)
+            top.geometry(f"{top_width}x{top_height}+{int((screen_width - top_width)/2)}+{int((screen_height - top_height)/2)}")
             top.title("Logistics Operations Information")
             # top.overrideredirect(True)
             # top.attributes('-fullscreen', True)

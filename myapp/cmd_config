@@ -1,6 +1,6 @@
 cd Pikanto
-virtual\Scripts\activate
 cd myapp
+virtuale\Scripts\activate
 python main.py
 
 
