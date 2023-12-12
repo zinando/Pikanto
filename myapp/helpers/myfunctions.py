@@ -23,7 +23,9 @@ def create_image_obj(imagepath, size):
         Returns the image obj
     """
     image = Image.open(imagepath)
-    img = ctk.CTkImage(image, size=size)
+    # img = ctk.CTkImage(image, size=size)
+    resized_image = image.resize(size, Image.ANTIALIAS)
+    img = ImageTk.PhotoImage(resized_image)
     return img
 
 
