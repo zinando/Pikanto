@@ -84,9 +84,9 @@ class LoginPage(ctk.CTk):
         self.title('Pikanto - logistics weight station data manager')
         self.configure(bg="#2f6c60")
 
-        bg_image = func.create_image_obj("assets/images/welcome_bg.PNG", size=(460, 260))
-        bg_label_image = MyLabel(self, image=bg_image, bg_color="#2f6c60").create_obj()
-        bg_label_image.place(x=35, y=65)
+        #bg_image = func.create_image_obj("assets/images/welcome_bg.PNG", size=(460, 260))
+        #bg_label_image = MyLabel(self, image=bg_image, bg_color="#2f6c60").create_obj()
+        #.place(x=35, y=65)
 
         welcome_label = MyLabel(self, text="Logistics Weight Station Console", bg_color="#2f6c60",
                                 font="Trebuchet Ms", font_size=22, font_weight="bold", text_color="white",

@@ -31,6 +31,7 @@ class CreateAppView(ctk.CTk):
         self.record_view_display = None
         self.status_message = None
         self.unit = "Kg"
+
         #self.weight_data = None
         self.resizable(False, False)
         width, height = 1000, 600

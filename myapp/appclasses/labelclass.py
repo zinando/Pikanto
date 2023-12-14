@@ -23,12 +23,13 @@ class MyLabel(object):
         self.x = kwargs["x"] if "x" in kwargs else 0
         self.y = kwargs["y"] if "y" in kwargs else 0
         self.corner_radius = kwargs["border_radius"] if "border_radius" in kwargs else None
+        self.anchor = kwargs["anchor"] if "anchor" in kwargs else "center"
 
     def create_obj(self):
         """Creates the label object and returns it"""
         lab = ctk.CTkLabel(self.master, text=self.text, text_color=self.text_color, fg_color=self.fg_color,
                            image=self.image, bg_color=self.bg_color, height=self.height, width=self.width,
-                           corner_radius=self.corner_radius)
+                           corner_radius=self.corner_radius, anchor=self.anchor)
         lab.cget("font").configure(family=self.font, size=self.font_size, weight=self.font_weight,
                                    slant=self.font_style)
         lab.position_x = self.x

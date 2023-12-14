@@ -487,6 +487,226 @@ class Pikanto(WindowViews):
                     w = (int(action_btn_wrapper.cget('width')) // 3) - 15
                     x = 5
                     y = (int(action_btn_wrapper.cget('height')) - h) // 2
+                    detail_btn = MyButton(action_btn_wrapper, text="Ticket", font_size=12,
+                                          text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
+                                          height=h, width=w, x=x, y=y,
+                                          command=partial(self.display_data_details, item)).create_obj()
+                    detail_btn.place(x=x, y=y)
+
+                    x = detail_btn.position_x + int(detail_btn.cget('width')) + 15
+                    waybill_btn = MyButton(action_btn_wrapper, text="Waybill", font_size=12,
+                                           text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
+                                           height=h, width=w, x=x, y=y,
+                                           command=partial(self.open_waybill_entry, item)).create_obj()
+                    waybill_btn.place(x=x, y=y)
+
+                    # waybill button to display details if waybill has been created, else show waybill form
+                    if item.waybill_ready:
+                        waybill_btn.configure(command=partial(self.view_waybill_detail, item))
+
+                    x = waybill_btn.position_x + int(waybill_btn.cget('width')) + 15
+                    ticket_btn = MyButton(action_btn_wrapper, text="Request", font_size=12,
+                                          text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
+                                          height=h, width=w, x=x, y=y,
+                                          command=partial(self.send_approval_request, item)).create_obj()
+                    if not item.ticket_ready or not item.waybill_ready or item.approval_status != 'pending':
+                        ticket_btn.configure(state='disabled')
+                    ticket_btn.place(x=x, y=y)
+
+                    item_position_y += skipper
+
+                # create buttons to navigate different pages of the records
+                h = 50
+                w = int(report_label.cget('width'))
+                y = int(report_label.cget('height')) - 50
+                x = 0
+                btn_wrapper = MyLabel(report_label, text='', bg_color="#2f6c60",
+                                      fg_color="#ffffff", height=h, width=w, x=x, y=y,
+                                      font_weight="bold", corner_radius=8).create_obj()
+                btn_wrapper.place(x=x, y=y)
+
+                h = 20
+                w = 40
+                x = (btn_wrapper.cget('width') // 2) - 50
+                y = 10
+                prev_btn = MyButton(btn_wrapper, text="<< Prev", font_size=12, text_color="#ffffff",
+                                    bg_color="#ffffff", fg_color="#6699cc", height=h, width=w, x=x, y=y,
+                                    ).create_obj()
+                if group_number == 1:
+                    prev_btn.configure(state='disabled')
+                prev_btn.place(x=x, y=y)
+
+                x = (btn_wrapper.cget('width') // 2) + 10
+                next_btn = MyButton(btn_wrapper, text="Next >>", font_size=12, text_color="#ffffff",
+                                    bg_color="#ffffff", fg_color="#6699cc", height=h, width=w, x=x, y=y,
+                                    ).create_obj()
+                if group_number == total_groups:
+                    next_btn.configure(state='disabled')
+                next_btn.place(x=x, y=y)
+
+                # functions to handle prev and next button clicks
+                def on_prev_click():
+                    # destroy current view
+                    report_label.destroy()
+                    display_items(group_number - 1)
+
+                def on_next_click():
+                    # destroy current view
+                    report_label.destroy()
+                    display_items(group_number + 1)
+
+                prev_btn.configure(command=on_prev_click)
+                next_btn.configure(command=on_next_click)
+
+                # button to exit the record view from screen
+                x = x + 250
+                exit_btn = MyButton(btn_wrapper, text="Exit", font_size=12, text_color="#000000",
+                                    bg_color="#ffffff", fg_color="#e3b448", height=h, width=w, x=x, y=y,
+                                    command=lambda: report_label.destroy()).create_obj()
+                exit_btn.place(x=x, y=y)
+
+            display_items(1)
+
+    def view_weight_recordsxxx(self):
+        """fetches weight records from database and display them on the main display window"""
+        # check if the view is open and close
+        if self.record_view_display:
+            self.record_view_display.destroy()
+
+        # fetch data from database
+        my_query = Messenger(self.server_url, '/fetch_resources/weight_records')
+        response = my_query.query_server({'data': None})
+        if response['status'] == 1:
+            data = response['data']
+        else:
+            data = None
+            func.notify_user('No records found!')
+            return
+
+        if data:
+            items_per_page = 5
+            grouper = SubGroupCreator(data)
+            grouper.create_sub_groups(items_per_page)
+            total_groups = grouper.total_groups()
+
+            def display_items(group_number):
+                """function creates a widget that displays certain number of data on the main display"""
+                items_to_display = grouper.get_group(group_number)
+
+                # create a label the size of the main display label
+                h = int(self.display_label.cget('height'))
+                w = int(self.display_label.cget('width'))
+                x, y = self.display_label.position_x, self.display_label.position_y
+                report_label = MyLabel(self, text="", bg_color="#ffffff", fg_color="#c9c9c9", height=h, width=w, x=x,
+                                       y=y) \
+                    .create_obj()
+                report_label.place(x=x, y=y)
+                self.record_view_display = report_label
+
+                #  create header for the form
+                h = 60
+                x, y = 0, 0
+                report_header_label = MyLabel(report_label, text="", bg_color="#ffffff", fg_color="#ffffff",
+                                              height=h, width=w, x=x, y=y, text_color="#000000", font_size=28,
+                                              font_weight="bold") \
+                    .create_obj()
+                report_header_label.place(x=x, y=y)
+
+                # create 4 header widgets in the header label
+                h = int(report_header_label.cget('height')) - 10
+                # w = (((int(report_header_label.cget('width'))-10) // 3) * 2)//3
+                w = ((int(report_header_label.cget('width')) - 10) * (2 / 9)) - 5
+                x, y = 5, 5
+                head_1 = MyTexBox(report_header_label, text='HAULIER', bg_color="#ffffff",
+                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
+                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
+                head_1.place(x=x, y=y)
+                x = head_1.position_x + int(head_1.cget('width')) + 5
+                head_2 = MyTexBox(report_header_label, text='VEHICLE ID', bg_color="#ffffff",
+                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
+                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
+                head_2.place(x=x, y=y)
+                x = head_2.position_x + int(head_2.cget('width')) + 5
+                head_3 = MyTexBox(report_header_label, text='TIME', bg_color="#ffffff",
+                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
+                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
+                head_3.place(x=x, y=y)
+                w = ((int(report_header_label.cget('width')) - 10) // 3)
+                x = head_3.position_x + int(head_3.cget('width')) + 5
+                head_4 = MyTexBox(report_header_label, text='ACTIONS', bg_color="#ffffff",
+                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
+                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
+                head_4.place(x=x, y=y)
+
+                # create a wrapper where all the items are going to be displayed
+                h = int(report_label.cget('height')) - (50 + int(report_header_label.cget('height')))
+                w = int(report_label.cget('width'))
+                x, y = 0, int(report_header_label.cget('height')) + report_header_label.position_y
+                content_wrapper = MyLabel(report_label, text='', bg_color="#2f6c60",
+                                          fg_color="#ffffff", height=h, width=w, x=x, y=y,
+                                          font_weight="bold", corner_radius=8).create_obj()
+                content_wrapper.place(x=x, y=y)
+
+                # iterate over the list of items to display and create widgets to display
+                # ...information for each item wrt to the header
+                item_position_y = 0
+                for item in items_to_display:
+                    item = DotDict(item)
+                    skipper = h = content_wrapper.cget('height') // items_per_page
+                    w = int(content_wrapper.cget('width')) - 10
+                    y = item_position_y
+                    x = 5
+                    item_wrapper = MyLabel(content_wrapper, text='', bg_color="#2f6c60",
+                                           fg_color="#2f6c60", height=h, width=w, x=x, y=y,
+                                           font_weight="bold", corner_radius=8).create_obj()
+                    item_wrapper.place(x=x, y=y)
+
+                    d_h = h - 20
+                    d_w = int(head_1.cget('width')) - 5
+                    d_x = head_1.position_x
+                    d_y = 10
+                    col_1 = MyTexBox(item_wrapper, text=item.haulier, bg_color="#2f6c60",
+                                     fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
+                                     font_size=14, corner_radius=8).create_obj()
+                    col_1.place(x=d_x, y=d_y)
+
+                    # create an indicator to show if item is approved or not
+                    if item.approval_status == 'approved':
+                        bg_color = '#53f925'
+                        indicator_text = 'approved'
+                    else:
+                        bg_color = 'grey'
+                        indicator_text = 'pending'
+                    indicator = MyTexBox(col_1, text=indicator_text, bg_color="#ffffff",
+                                         fg_color=bg_color, height=(d_h / 2) - 5, width=(d_w / 2) - 10, x=5, y=25,
+                                         text_color="#000000", font_size=12, corner_radius=50).create_obj()
+                    indicator.place(x=5, y=25)
+
+                    d_x = head_2.position_x
+                    col_2 = MyTexBox(item_wrapper, text=item.vehicle_id, bg_color="#2f6c60",
+                                     fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
+                                     font_size=14, corner_radius=8).create_obj()
+                    col_2.place(x=d_x, y=d_y)
+
+                    d_x = head_3.position_x
+                    col_3 = MyTexBox(item_wrapper, text=item.initial_time, bg_color="#2f6c60",
+                                     fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
+                                     font_size=14, corner_radius=8).create_obj()
+                    col_3.place(x=d_x, y=d_y)
+
+                    # create wrapper for the action buttons
+                    w = int(head_4.cget('width')) - 5
+                    x = head_4.position_x
+                    action_btn_wrapper = MyLabel(item_wrapper, text='', bg_color="#2f6c60",
+                                                 fg_color="#ffffff", height=d_h, width=w, x=x, y=d_y,
+                                                 font_weight="bold", corner_radius=8).create_obj()
+                    action_btn_wrapper.place(x=x, y=d_y)
+
+                    # buttons
+                    h = 30
+                    w = (int(action_btn_wrapper.cget('width')) // 3) - 15
+                    x = 5
+                    y = (int(action_btn_wrapper.cget('height')) - h) // 2
                     detail_btn = MyButton(action_btn_wrapper, text="Details", font_size=12,
                                           text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
                                           height=h, width=w, x=x, y=y,

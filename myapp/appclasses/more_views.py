@@ -86,7 +86,8 @@ class WindowViews(CreateAppView):
             print("screen is: {}x{}".format(screen_width, screen_height))
             top_width = int(screen_width)
             top_height = int(screen_height * 0.95)
-            top.geometry(f"{top_width}x{top_height}+{int((screen_width - top_width)/2)}+{int((screen_height - top_height)/2)}")
+            top.geometry(
+                f"{top_width}x{top_height}+{int((screen_width - top_width) / 2)}+{int((screen_height - top_height) / 2)}")
             top.title("Logistics Operations Information")
             # top.overrideredirect(True)
             # top.attributes('-fullscreen', True)
@@ -180,6 +181,357 @@ class WindowViews(CreateAppView):
 
         else:
             self.toplevel_window.focus()
+
+    def view_waybill_detailbvb(self, data):
+        # fetch the required data
+        ticket, waybill, products, bad_products, files, approvals_data = self.fetch_details_data(data)
+        if waybill is None:
+            return
+
+        if waybill:
+            company_info_data = waybill
+        else:
+            company_info_data = {
+                "waybill_number": "",
+                "date": "",
+                "location": "",
+                "company_ref": "",
+                "customer_ref": "",
+                "customer_name": "",
+                "address": "",
+                "vehicle_id": "",
+                "transporter": ""
+            }
+
+        product_data = products
+
+        bad_products_info = bad_products
+
+        # Create the main window
+        if self.toplevel_window is None:
+            # Create the main window to fill the screen
+            top = tk.Toplevel(self)
+            self.toplevel_window = top
+            screen_width, screen_height = self.get_screen_resolution()
+            print("screen is: {}x{}".format(screen_width, screen_height))
+            top_width = int(screen_width)
+            top_height = int(screen_height * 0.9)
+            top.geometry(
+                f"{top_width}x{top_height}+{int((screen_width - top_width) / 2)}+{int((screen_height - top_height) / 2)}")
+            top.title("Logistics Operations Information")
+
+            waybill_frame = self.create_waybill_detail(top, company_info_data, product_data,
+                                                       bad_products_info, approvals_data)
+            waybill_frame.pack(fill=tk.BOTH, expand=True)
+
+            # Create the action buttons frame for waybill
+            waybill_action_buttons_frame = tk.Frame(top)
+            waybill_action_buttons_frame.pack(fill=tk.X)
+
+            # Create the print button for the waybill frame
+            waybill_print_button = ctk.CTkButton(waybill_action_buttons_frame, text="Print Waybill", height=25,
+                                                 width=70, bg_color="#F0F0F0", fg_color="grey",
+                                                 text_color="#ffffff")
+            waybill_print_button.grid(row=0, column=0, padx=10)
+
+            # Create button for approval of the waybill
+            waybill_approval_button = ctk.CTkButton(waybill_action_buttons_frame, text="Approve Waybill", height=25,
+                                                    width=70, bg_color="#F0F0F0", fg_color="grey",
+                                                    text_color="#ffffff")
+            waybill_approval_button.grid(row=0, column=1, padx=10)
+
+            if data.approval_status == "approved" or not data.waybill_ready or not data.final_weight:
+                waybill_approval_button.configure(state='disabled')
+
+            def thread_request():
+                thread = threading.Thread(target=self.approve_waybill, args=[data.id])
+                thread.daemon = True  # Daemonize the thread to avoid issues on application exit
+                thread.start()
+
+            waybill_approval_button.configure(command=thread_request)
+
+            def print_waybill():
+                top.update()
+                width = waybill_frame.winfo_width()
+                height = waybill_frame.winfo_height()
+                x = top.winfo_x()
+                y = top.winfo_y()
+                print(f"x: {x}, y: {y}, w: {width}, h: {height}")
+                self.generate_printable_view(waybill_frame, width // 2, height // 2, x, y)
+
+            waybill_print_button.configure(command=print_waybill)
+
+            top.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        else:
+            self.toplevel_window.focus()
+
+    def view_waybill_detail(self, data):
+        # fetch the required data
+        ticket, waybill, products, bad_products, files, approvals_data = self.fetch_details_data(data)
+        if waybill is None:
+            return
+
+        if waybill:
+            company_info_data = waybill
+        else:
+            company_info_data = {
+                "waybill_number": "",
+                "date": "",
+                "location": "",
+                "company_ref": "",
+                "customer_ref": "",
+                "customer_name": "",
+                "address": "",
+                "vehicle_id": "",
+                "transporter": ""
+            }
+
+        products_data = products
+
+        bad_products_info = bad_products
+
+        # Create the main window
+        if self.toplevel_window is None:
+            # Create the main window to fill the screen
+            w, h = self.get_screen_resolution2()
+            top_height = int(h * 0.9)
+            screen_width, screen_height = self.get_screen_resolution()  # size of A4
+            top_width = screen_width
+            top = DialogueBox(top_width, top_height, fg_color="#e3e7f0")
+
+            # Load and resize the header image
+            header_image = Image.open('assets/images/ugee_header.PNG')
+
+            # Calculate new height to maintain image aspect ratio
+            # aspect_ratio = header_image.width / header_image.height
+            # new_height = int(screen_width / aspect_ratio)
+            new_height = 200
+
+            # Convert ImageTk.PhotoImage to CTkImage
+            header_ctk_image = ctk.CTkImage(light_image=header_image, size=(screen_width, new_height))
+
+            # Create a label to hold the header image
+            header_label = MyLabel(top, image=header_ctk_image, width=screen_width, height=new_height,
+                                   x=0, y=0).create_obj()
+            header_label.place(x=0, y=0)
+
+            # Assign the image to the label to prevent it from being garbage collected
+            header_label.image = header_ctk_image
+
+            # create a title for the waybill
+            x = header_label.position_x
+            y = int(header_label.cget("height")) + header_label.position_y + 2
+            waybill_title_label = MyLabel(top, text="WAYBILL", font_size=18, font_weight="bold", x=x, y=y,
+                                          font="TkDefaultFont", text_color="blue",
+                                          fg_color="#ffffff", width=screen_width, height=25).create_obj()
+            waybill_title_label.place(x=x, y=y)
+
+            # create a frame to put canvas and a scroll bar
+            h = canvas_height = (top_height - 360) * 2
+            w = screen_width * 2
+            x = waybill_title_label.position_x
+            y = waybill_title_label.position_y + int(waybill_title_label.cget("height"))
+            canvas_frame = ctk.CTkFrame(master=top, width=w, height=h)
+            canvas_frame.position_x = x
+            canvas_frame.position_y = y
+            canvas_frame.place(x=x, y=y)
+
+            # create a canvas and put content frame inside the canvas. should be scrollable
+            w = int(canvas_frame.cget("width")) - 40
+            waybill_canvas = tk.Canvas(canvas_frame, height=h, width=w)  # 1100
+            waybill_scrollbar = tk.Scrollbar(canvas_frame, orient="vertical", command=waybill_canvas.yview)
+
+            # Pack the scrollbar to the right side and expand the canvas
+            waybill_scrollbar.pack(side="right", fill="y")
+            waybill_canvas.pack(side="left", fill="both", expand=True)
+
+            # create a frame to hold waybill content including products
+            content_frame = ctk.CTkFrame(master=waybill_canvas, width=screen_width, height=h)
+
+            # position the content frame inside the canvas
+            waybill_canvas.create_window((0, 0), window=content_frame, anchor="nw")
+            waybill_canvas.configure(yscrollcommand=waybill_scrollbar.set)
+
+            # create the contents inside the content frame
+            # row 1
+            content_w = (screen_width - 25) // 4
+            h = 25
+            x, y = 5, 0
+            waybill_number_label = MyLabel(content_frame, text="Waybill Number:", anchor="w", width=content_w,
+                                           font="TkDefaultFont", font_size=14, font_weight="bold",
+                                           height=h, x=x, y=y).create_obj()
+            waybill_number_label.place(x=x, y=y)
+
+            x = x + int(waybill_number_label.cget("width")) + 5
+            waybill_number_value_label = MyLabel(content_frame, text=company_info_data['waybill_number'],
+                                                 anchor="w", width=content_w, height=h, x=x, y=y).create_obj()
+            waybill_number_value_label.place(x=x, y=y)
+
+            x = x + int(waybill_number_value_label.cget("width")) + 5
+            date2_label = MyLabel(content_frame, text="Date:", anchor="w", width=content_w,
+                                  font="TkDefaultFont", font_size=14, font_weight="bold", height=h, x=x, y=y
+                                  ).create_obj()
+            date2_label.place(x=x, y=y)
+
+            x = x + int(date2_label.cget("width")) + 5
+            date2_value_label = MyLabel(content_frame, text=company_info_data['date'],
+                                        anchor="w", width=content_w, height=h, x=x, y=y).create_obj()
+            date2_value_label.place(x=x, y=y)
+
+            # row 2
+            y = y + 2 + int(date2_value_label.cget("height"))
+            x = 5
+            location_label = MyLabel(content_frame, text="Location:", anchor="w", width=content_w,
+                                     font="TkDefaultFont", font_size=14, font_weight="bold", height=h, x=x, y=y
+                                     ).create_obj()
+            location_label.place(x=x, y=y)
+
+            x = x + int(location_label.cget("width")) + 5
+            location_value_label = MyLabel(content_frame, text=company_info_data['location'],
+                                           anchor="w", width=content_w, height=h, x=x, y=y).create_obj()
+            location_value_label.place(x=x, y=y)
+
+            x = x + int(location_value_label.cget("width")) + 5
+            company_ref_label = MyLabel(content_frame, text="Ugee Ref No:", anchor="w", width=content_w,
+                                        font="TkDefaultFont", font_size=14, font_weight="bold", height=h, x=x, y=y
+                                        ).create_obj()
+            company_ref_label.place(x=x, y=y)
+
+            x = x + int(company_ref_label.cget("width")) + 5
+            company_ref_value_label = MyLabel(content_frame, text=company_info_data['company_ref'],
+                                              anchor="w", width=content_w, height=h, x=x, y=y).create_obj()
+            company_ref_value_label.place(x=x, y=y)
+
+            # row 3
+            y = y + int(company_ref_value_label.cget("height")) + 2
+            x = 5
+            customer_ref_label = MyLabel(content_frame, text="Customer Ref No:", anchor="w", width=content_w,
+                                         font="TkDefaultFont", font_size=14, font_weight="bold", height=h, x=x, y=y
+                                         ).create_obj()
+            customer_ref_label.place(x=x, y=y)
+
+            x = x + int(customer_ref_label.cget("width")) + 5
+            customer_ref_value_label = MyLabel(content_frame, text=company_info_data['customer_ref'],
+                                               anchor="w", width=content_w, height=h, x=x, y=y).create_obj()
+            customer_ref_value_label.place(x=x, y=y)
+
+            x = x + int(customer_ref_value_label.cget("width")) + 5
+            customer_name_label = MyLabel(content_frame, text="Customer Name:", anchor="w", width=content_w,
+                                          font="TkDefaultFont", font_size=14, font_weight="bold", height=h, x=x, y=y
+                                          ).create_obj()
+            customer_name_label.place(x=x, y=y)
+
+            x = x + int(customer_name_label.cget("width")) + 5
+            customer_name_value_label = MyLabel(content_frame, text=company_info_data['customer_name'],
+                                                anchor="w", width=content_w, height=h, x=x, y=y).create_obj()
+            customer_name_value_label.place(x=x, y=y)
+
+            # row 4
+            y = y + int(customer_name_value_label.cget("height")) + 2
+            x = 5
+            address_label = MyLabel(content_frame, text="Delivery Address:", anchor="w", width=content_w,
+                                    font="TkDefaultFont", font_size=14, font_weight="bold", height=h, x=x, y=y
+                                    ).create_obj()
+            address_label.place(x=x, y=y)
+
+            x = x + int(address_label.cget("width")) + 5
+            address_value_label = MyLabel(content_frame, text=company_info_data['address'],
+                                          anchor="w", width=content_w, height=h, x=x, y=y).create_obj()
+            address_value_label.place(x=x, y=y)
+
+            x = x + int(address_value_label.cget("width")) + 5
+            vehicle_id_label = MyLabel(content_frame, text="Vehicle No:", anchor="w", width=content_w,
+                                       font="TkDefaultFont", font_size=14, font_weight="bold", height=h, x=x, y=y
+                                       ).create_obj()
+            vehicle_id_label.place(x=x, y=y)
+
+            x = x + int(vehicle_id_label.cget("width")) + 5
+            vehicle_id_value_label = MyLabel(content_frame, text=company_info_data['vehicle_id'],
+                                             anchor="w", width=content_w, height=h, x=x, y=y).create_obj()
+            vehicle_id_value_label.place(x=x, y=y)
+
+            # row 5
+            y = y + int(vehicle_id_value_label.cget("height")) + 2
+            x = 5
+            transporter_label = MyLabel(content_frame, text="Transporter:", anchor="w", width=content_w,
+                                        font="TkDefaultFont", font_size=14, font_weight="bold", height=h, x=x, y=y
+                                        ).create_obj()
+            transporter_label.place(x=x, y=y)
+
+            x = x + int(transporter_label.cget("width")) + 5
+            transporter_value_label = MyLabel(content_frame, text=company_info_data['transporter'],
+                                              anchor="w", width=content_w, height=h, x=x, y=y).create_obj()
+            transporter_value_label.place(x=x, y=y)
+
+            # create products title label
+            y = y + 2 + int(transporter_value_label.cget("height"))
+            x = 5
+            w = screen_width - 10
+            products_title_label = MyLabel(content_frame, text="Products", font_size=18, font_weight="bold", x=x, y=y,
+                                           font="TkDefaultFont", text_color="grey",
+                                           fg_color="#ffffff", width=w, height=25).create_obj()
+            products_title_label.place(x=x, y=y)
+
+            # create products label
+            y = y + int(products_title_label.cget("height"))
+            x = 0
+            w = screen_width
+            print(canvas_height)
+            print(y)
+            h = (canvas_height - y) // 2
+            products_label = MyLabel(content_frame, text="", x=x, y=y,
+                                     fg_color="#ffffff", width=w, height=h).create_obj()
+            products_label.place(x=x, y=y)
+
+            # create products detail
+            self.create_product_detail(products_label, products_data)
+
+            # create bad products title label
+            y = y + 2 + int(products_label.cget("height"))
+            x = 5
+            w = screen_width - 10
+            bad_products_title_label = MyLabel(content_frame, text="Bad Products", font_size=18, font_weight="bold",
+                                               x=x, y=y,
+                                               font="TkDefaultFont", text_color="grey",
+                                               fg_color="#ffffff", width=w, height=25).create_obj()
+            bad_products_title_label.place(x=x, y=y)
+
+            # create bad products label
+            y = y + int(bad_products_title_label.cget("height"))
+            x = 0
+            w = screen_width
+            h = h - int(bad_products_title_label.cget("height"))
+            bad_products_label = MyLabel(content_frame, text="", x=x, y=y,
+                                         fg_color="#ffffff", width=w, height=h).create_obj()
+            bad_products_label.place(x=x, y=y)
+
+            # create bad products detail
+            self.create_bad_product_detail(bad_products_label, bad_products_info)
+
+            # create another frame for the approvals
+
+            # create action buttons under the approval frame
+
+            self.toplevel_window = top
+
+            top.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        else:
+            self.toplevel_window.focus()
+
+    def get_screen_resolution2(self):
+        # Create a hidden Tkinter window to access screen information
+        root = tk.Tk()
+        root.attributes('-alpha', 0)  # Hide the window
+
+        # Get the screen width and height in pixels
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+
+        root.destroy()
+
+        return screen_width, screen_height
 
     def create_ticket_detail(self, window, ticket_data):
         # create a frame for the ticket
@@ -303,13 +655,13 @@ class WindowViews(CreateAppView):
 
         return ticket_frame
 
-    def create_waybill_detail(self, window, company_info_data, product_info, bad_product_info, approvals_data):
+    def create_waybill_detailvcv(self, window, company_info_data, product_info, bad_product_info, approvals_data):
+        w, h = self.get_screen_resolution()
         # create a frame for the waybill
-        waybill_frame = tk.Frame(window, bd=3, relief=tk.SUNKEN)
+        waybill_frame = tk.Frame(window, bd=3, relief=tk.SUNKEN, height=h, width=w)
 
         # create header image
-        w, h = self.get_screen_resolution()
-        image_width = w - 6  # 6 = 2x3 where 3 is the separator thickness btw the two frames
+        image_width = w
         image_frame = self.create_header_image(waybill_frame, int(image_width))
         image_frame.pack(fill=tk.X, pady=5)
 
@@ -324,18 +676,18 @@ class WindowViews(CreateAppView):
         waybill_content_frame.pack(fill=tk.X)
 
         # After creating the waybill_content_frame
-        waybill_canvas = tk.Canvas(waybill_content_frame, height=1100)
+        waybill_canvas = tk.Canvas(waybill_content_frame, height=h, width=w)  # 1100
         waybill_scrollbar = tk.Scrollbar(waybill_content_frame, orient="vertical", command=waybill_canvas.yview)
-        waybill_scrollable_frame = tk.Frame(waybill_canvas)
-        waybill_products_title_label = ctk.CTkLabel(waybill_canvas, text="Products", width=700,
+        waybill_scrollable_frame = tk.Frame(waybill_canvas, width=w)
+        waybill_products_title_label = ctk.CTkLabel(waybill_canvas, text="Products", width=w,
                                                     font=("TkDefaultFont", 16, "bold"), text_color="black",
                                                     fg_color="#ffffff")
-        waybill_products_frame = tk.Frame(waybill_canvas)
+        waybill_products_frame = tk.Frame(waybill_canvas, width=w)
         waybill_bad_products_title_label = ctk.CTkLabel(waybill_canvas, text="Bad/Damaged Products",
-                                                        font=("TkDefaultFont", 16, "bold"), width=700,
+                                                        font=("TkDefaultFont", 16, "bold"), width=w,
                                                         text_color="black", fg_color="#ffffff")
         waybill_approvals_frame = tk.Frame(waybill_canvas)
-        waybill_bad_products_frame = tk.Frame(waybill_canvas)
+        waybill_bad_products_frame = tk.Frame(waybill_canvas, width=w)
 
         waybill_canvas.create_window((0, 0), window=waybill_scrollable_frame, anchor="nw")
         waybill_canvas.configure(yscrollcommand=waybill_scrollbar.set)
@@ -351,64 +703,217 @@ class WindowViews(CreateAppView):
         # create labels for company info
 
         # row 1
+        content_w = w // 700
         waybill_number_label = ctk.CTkLabel(waybill_scrollable_frame, text="Waybill Number:", anchor="w",
-                                            font=("TkDefaultFont", 14, "bold"), width=140)
-        waybill_number_label.grid(row=0, column=0, padx=5, sticky="w")
+                                            font=("TkDefaultFont", 14, "bold"))
+        waybill_number_label.grid(row=0, column=0, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
+
         waybill_number_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['waybill_number'],
-                                                  anchor="w", width=90)
-        waybill_number_value_label.grid(row=0, column=1, padx=5, sticky="w")
+                                                  anchor="w")
+        waybill_number_value_label.grid(row=0, column=1, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
+
         date2_label = ctk.CTkLabel(waybill_scrollable_frame, text="Date:", anchor="w",
-                                   font=("TkDefaultFont", 14, "bold"), width=120)
-        date2_label.grid(row=0, column=2, padx=5, sticky="w")
+                                   font=("TkDefaultFont", 14, "bold"))
+        date2_label.grid(row=0, column=2, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
+
         date2_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['date'],
-                                         anchor="w", width=90)
-        date2_value_label.grid(row=0, column=3, padx=5, sticky="w")
+                                         anchor="w")
+        date2_value_label.grid(row=0, column=3, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
+
         location_label = ctk.CTkLabel(waybill_scrollable_frame, text="Location:", anchor="w",
-                                      font=("TkDefaultFont", 14, "bold"), width=110)
-        location_label.grid(row=0, column=4, padx=5, sticky="w")
+                                      font=("TkDefaultFont", 14, "bold"))
+        location_label.grid(row=0, column=4, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
+
         location_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['location'],
-                                            anchor="w", width=90)
-        location_value_label.grid(row=0, column=5, padx=5, sticky="w")
+                                            anchor="w")
+        location_value_label.grid(row=0, column=5, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
 
         # row 2
         company_ref_label = ctk.CTkLabel(waybill_scrollable_frame, text="Ugee Reference No:", anchor="w",
-                                         font=("TkDefaultFont", 14, "bold"), width=140)
+                                         font=("TkDefaultFont", 14, "bold"), width=140 * content_w)
         company_ref_label.grid(row=1, column=0, padx=5, pady=5, sticky="w")
         company_ref_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['company_ref'],
-                                               anchor="w", width=90)
+                                               anchor="w", width=90 * content_w)
         company_ref_value_label.grid(row=1, column=1, padx=5, pady=5, sticky="w")
 
         customer_ref_label = ctk.CTkLabel(waybill_scrollable_frame, text="Customer Ref No:", anchor="w",
-                                          font=("TkDefaultFont", 14, "bold"), width=120)
+                                          font=("TkDefaultFont", 14, "bold"), width=120 * content_w)
         customer_ref_label.grid(row=1, column=2, padx=5, pady=5, sticky="w")
         customer_ref_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['customer_ref'],
-                                                anchor="w", width=90)
+                                                anchor="w", width=90 * content_w)
         customer_ref_value_label.grid(row=1, column=3, padx=5, pady=5, sticky="w")
         customer_name_label = ctk.CTkLabel(waybill_scrollable_frame, text="Customer Name:", anchor="w",
-                                           font=("TkDefaultFont", 14, "bold"), width=110)
+                                           font=("TkDefaultFont", 14, "bold"), width=110 * content_w)
         customer_name_label.grid(row=1, column=4, padx=5, pady=5, sticky="w")
         customer_name_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['customer_name'],
-                                                 anchor="w", width=90)
+                                                 anchor="w", width=90 * content_w)
         customer_name_value_label.grid(row=1, column=5, padx=5, pady=5, sticky="w")
 
         # row 3
         address_label = ctk.CTkLabel(waybill_scrollable_frame, text="Delivery Address:", anchor="w",
-                                     font=("TkDefaultFont", 14, "bold"), width=140)
+                                     font=("TkDefaultFont", 14, "bold"), width=140 * content_w)
         address_label.grid(row=2, column=0, padx=5, pady=5, sticky="w")
         address_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['address'],
-                                           anchor="w", width=90)
+                                           anchor="w", width=90 * content_w)
         address_value_label.grid(row=2, column=1, padx=5, pady=5, sticky="w")
         vehicle_id_label = ctk.CTkLabel(waybill_scrollable_frame, text="Vehicle No:", anchor="w",
-                                        font=("TkDefaultFont", 14, "bold"), width=120)
+                                        font=("TkDefaultFont", 14, "bold"), width=120 * content_w)
         vehicle_id_label.grid(row=2, column=2, padx=5, pady=5, sticky="w")
         vehicle_id_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['vehicle_id'],
-                                              anchor="w", width=90)
+                                              anchor="w", width=90 * content_w)
         vehicle_id_value_label.grid(row=2, column=3, padx=5, pady=5, sticky="w")
         transporter_label = ctk.CTkLabel(waybill_scrollable_frame, text="Transporter:", anchor="w",
-                                         font=("TkDefaultFont", 14, "bold"), width=110)
+                                         font=("TkDefaultFont", 14, "bold"), width=110 * content_w)
         transporter_label.grid(row=2, column=4, padx=5, pady=5, sticky="w")
         transporter_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['transporter'],
-                                               anchor="w", width=90)
+                                               anchor="w", width=90 * content_w)
+        transporter_value_label.grid(row=2, column=5, padx=5, pady=5, sticky="w")
+
+        waybill_canvas.create_window((0, 200), window=waybill_products_title_label, anchor="nw")
+
+        waybill_canvas.create_window((0, 300), window=waybill_products_frame, anchor="nw")
+
+        # create products detail
+        self.create_product_detail(waybill_products_frame, product_info)
+
+        waybill_canvas.create_window((0, 500), window=waybill_bad_products_title_label, anchor="nw")
+
+        waybill_canvas.create_window((0, 600), window=waybill_bad_products_frame, anchor="nw")
+
+        # create bad products detail
+        self.create_bad_product_detail(waybill_bad_products_frame, bad_product_info)
+
+        waybill_canvas.create_window((0, 800), window=waybill_approvals_frame, anchor="nw")
+
+        # create approval detail
+        self.create_waybill_approvals(waybill_approvals_frame, approvals_data)
+
+        return waybill_frame
+
+    def create_waybill_detail(self, window, company_info_data, product_info, bad_product_info, approvals_data):
+        w, h = window.width, window.height
+        # create a frame for the waybill
+        waybill_frame = window
+
+        # create header image
+        image_width = w
+        image_frame = self.create_header_image(waybill_frame, int(image_width))
+        image_frame.pack(fill=tk.X, pady=5)
+
+        # create a title for the waybill
+        waybill_title_label = ctk.CTkLabel(waybill_frame, text="WAYBILL",
+                                           font=("TkDefaultFont", 18, "bold"), text_color="blue",
+                                           fg_color="#ffffff")
+        waybill_title_label.pack(fill=tk.X, pady=10)
+
+        # create a Frame for the contents
+        waybill_content_frame = tk.Frame(waybill_frame, bg="#ffffff")
+        waybill_content_frame.pack(fill=tk.X)
+
+        # After creating the waybill_content_frame
+        waybill_canvas = tk.Canvas(waybill_content_frame, height=h, width=w)  # 1100
+        waybill_scrollbar = tk.Scrollbar(waybill_content_frame, orient="vertical", command=waybill_canvas.yview)
+        waybill_scrollable_frame = tk.Frame(waybill_canvas, width=w)
+        waybill_products_title_label = ctk.CTkLabel(waybill_canvas, text="Products", width=w,
+                                                    font=("TkDefaultFont", 16, "bold"), text_color="black",
+                                                    fg_color="#ffffff")
+        waybill_products_frame = tk.Frame(waybill_canvas, width=w)
+        waybill_bad_products_title_label = ctk.CTkLabel(waybill_canvas, text="Bad/Damaged Products",
+                                                        font=("TkDefaultFont", 16, "bold"), width=w,
+                                                        text_color="black", fg_color="#ffffff")
+        waybill_approvals_frame = tk.Frame(waybill_canvas)
+        waybill_bad_products_frame = tk.Frame(waybill_canvas, width=w)
+
+        waybill_canvas.create_window((0, 0), window=waybill_scrollable_frame, anchor="nw")
+        waybill_canvas.configure(yscrollcommand=waybill_scrollbar.set)
+
+        # Pack the scrollbar to the right side and expand the canvas
+        waybill_scrollbar.pack(side="right", fill="y")
+        waybill_canvas.pack(side="left", fill="both", expand=True)
+
+        # Configure scrollbar and canvas
+        waybill_canvas.bind("<Configure>",
+                            lambda e: waybill_canvas.configure(scrollregion=waybill_canvas.bbox("all")))
+
+        # create labels for company info
+
+        # row 1
+        content_w = w // 700
+        waybill_number_label = ctk.CTkLabel(waybill_scrollable_frame, text="Waybill Number:", anchor="w",
+                                            font=("TkDefaultFont", 14, "bold"))
+        waybill_number_label.grid(row=0, column=0, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
+
+        waybill_number_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['waybill_number'],
+                                                  anchor="w")
+        waybill_number_value_label.grid(row=0, column=1, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
+
+        date2_label = ctk.CTkLabel(waybill_scrollable_frame, text="Date:", anchor="w",
+                                   font=("TkDefaultFont", 14, "bold"))
+        date2_label.grid(row=0, column=2, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
+
+        date2_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['date'],
+                                         anchor="w")
+        date2_value_label.grid(row=0, column=3, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
+
+        location_label = ctk.CTkLabel(waybill_scrollable_frame, text="Location:", anchor="w",
+                                      font=("TkDefaultFont", 14, "bold"))
+        location_label.grid(row=0, column=4, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
+
+        location_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['location'],
+                                            anchor="w")
+        location_value_label.grid(row=0, column=5, padx=5, sticky="nsew")
+        window.columnconfigure(0, weight=1)
+
+        # row 2
+        company_ref_label = ctk.CTkLabel(waybill_scrollable_frame, text="Ugee Reference No:", anchor="w",
+                                         font=("TkDefaultFont", 14, "bold"), width=140 * content_w)
+        company_ref_label.grid(row=1, column=0, padx=5, pady=5, sticky="w")
+        company_ref_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['company_ref'],
+                                               anchor="w", width=90 * content_w)
+        company_ref_value_label.grid(row=1, column=1, padx=5, pady=5, sticky="w")
+
+        customer_ref_label = ctk.CTkLabel(waybill_scrollable_frame, text="Customer Ref No:", anchor="w",
+                                          font=("TkDefaultFont", 14, "bold"), width=120 * content_w)
+        customer_ref_label.grid(row=1, column=2, padx=5, pady=5, sticky="w")
+        customer_ref_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['customer_ref'],
+                                                anchor="w", width=90 * content_w)
+        customer_ref_value_label.grid(row=1, column=3, padx=5, pady=5, sticky="w")
+        customer_name_label = ctk.CTkLabel(waybill_scrollable_frame, text="Customer Name:", anchor="w",
+                                           font=("TkDefaultFont", 14, "bold"), width=110 * content_w)
+        customer_name_label.grid(row=1, column=4, padx=5, pady=5, sticky="w")
+        customer_name_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['customer_name'],
+                                                 anchor="w", width=90 * content_w)
+        customer_name_value_label.grid(row=1, column=5, padx=5, pady=5, sticky="w")
+
+        # row 3
+        address_label = ctk.CTkLabel(waybill_scrollable_frame, text="Delivery Address:", anchor="w",
+                                     font=("TkDefaultFont", 14, "bold"), width=140 * content_w)
+        address_label.grid(row=2, column=0, padx=5, pady=5, sticky="w")
+        address_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['address'],
+                                           anchor="w", width=90 * content_w)
+        address_value_label.grid(row=2, column=1, padx=5, pady=5, sticky="w")
+        vehicle_id_label = ctk.CTkLabel(waybill_scrollable_frame, text="Vehicle No:", anchor="w",
+                                        font=("TkDefaultFont", 14, "bold"), width=120 * content_w)
+        vehicle_id_label.grid(row=2, column=2, padx=5, pady=5, sticky="w")
+        vehicle_id_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['vehicle_id'],
+                                              anchor="w", width=90 * content_w)
+        vehicle_id_value_label.grid(row=2, column=3, padx=5, pady=5, sticky="w")
+        transporter_label = ctk.CTkLabel(waybill_scrollable_frame, text="Transporter:", anchor="w",
+                                         font=("TkDefaultFont", 14, "bold"), width=110 * content_w)
+        transporter_label.grid(row=2, column=4, padx=5, pady=5, sticky="w")
+        transporter_value_label = ctk.CTkLabel(waybill_scrollable_frame, text=company_info_data['transporter'],
+                                               anchor="w", width=90 * content_w)
         transporter_value_label.grid(row=2, column=5, padx=5, pady=5, sticky="w")
 
         waybill_canvas.create_window((0, 200), window=waybill_products_title_label, anchor="nw")
@@ -478,72 +983,166 @@ class WindowViews(CreateAppView):
 
     def create_product_detail(self, widget, product_info):
         # create labels for the headers
-        sn_label = ctk.CTkLabel(widget, text="S/N", width=30, bg_color="#f0f0f0", height=50,
-                                fg_color="#B2ACAB", text_color="black")
-        sn_label.grid(row=0, column=0)
-        description_label = ctk.CTkLabel(widget, text="Product Description", width=150, bg_color="#f0f0f0",
-                                         fg_color="#B2ACAB", text_color="black", height=50)
-        description_label.grid(row=0, column=1)
-        code_label = ctk.CTkLabel(widget, text="Item Code", width=100, bg_color="#f0f0f0",
-                                  fg_color="#B2ACAB", text_color="black", height=50)
-        code_label.grid(row=0, column=2)
-        packages_label = ctk.CTkLabel(widget, text="No of Packages\n (Bags/Boxes)", width=100, bg_color="#f0f0f0",
-                                      fg_color="#B2ACAB", text_color="black", height=50)
-        packages_label.grid(row=0, column=3)
-        quantity_label = ctk.CTkLabel(widget, text="Quantity\n (MT/NOs)", width=100, bg_color="#f0f0f0",
-                                      fg_color="#B2ACAB", text_color="black", height=50)
-        quantity_label.grid(row=0, column=4)
-        accepted_label = ctk.CTkLabel(widget, text="Accepted\n qty", width=70, bg_color="#f0f0f0",
-                                      fg_color="#B2ACAB", text_color="black", height=50)
-        accepted_label.grid(row=0, column=5)
-        remarks_label = ctk.CTkLabel(widget, text="Remarks", width=150, bg_color="#f0f0f0",
-                                     fg_color="#B2ACAB", text_color="black", height=50)
-        remarks_label.grid(row=0, column=6)
+        h = 35
+        w = (int(widget.cget("width")) - 40) // 7
+        x, y = 5, 5
+        sn_label = MyLabel(widget, text="S/N", font_size=14, font_weight="bold", x=x, y=y,
+                           font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                           fg_color="#B2ACAB", width=w - 20, height=h).create_obj()
+        sn_label.place(x=x, y=y)
+
+        x = x + int(sn_label.cget("width")) + 5
+        description_label = MyLabel(widget, text="Description", font_size=14, font_weight="bold", x=x, y=y,
+                                    font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                                    fg_color="#B2ACAB", width=w + 20, height=h).create_obj()
+        description_label.place(x=x, y=y)
+
+        x = x + int(description_label.cget("width")) + 5
+        code_label = MyLabel(widget, text="Item Code", font_size=14, font_weight="bold", x=x, y=y,
+                             font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                             fg_color="#B2ACAB", width=w, height=h).create_obj()
+        code_label.place(x=x, y=y)
+
+        x = x + int(code_label.cget('width')) + 5
+        packages_label = MyLabel(widget, text="No of Packages\n (Bags/Boxes)", font_size=14, font_weight="bold", x=x,
+                                 y=y,
+                                 font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                                 fg_color="#B2ACAB", width=w, height=h).create_obj()
+        packages_label.place(x=x, y=y)
+
+        x = x + int(packages_label.cget("width")) + 5
+        quantity_label = MyLabel(widget, text="Quantity\n (MT/NOs)", font_size=14, font_weight="bold", x=x, y=y,
+                                 font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                                 fg_color="#B2ACAB", width=w, height=h).create_obj()
+        quantity_label.place(x=x, y=y)
+
+        x = x + int(quantity_label.cget('width')) + 5
+        accepted_label = MyLabel(widget, text="Accepted\n qty", font_size=14, font_weight="bold", x=x, y=y,
+                                 font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                                 fg_color="#B2ACAB", width=w, height=h).create_obj()
+        accepted_label.place(x=x, y=y)
+
+        x = x + int(accepted_label.cget("width")) + 5
+        remarks_label = MyLabel(widget, text="Remarks", font_size=14, font_weight="bold", x=x, y=y,
+                                font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                                fg_color="#B2ACAB", width=w, height=h).create_obj()
+        remarks_label.place(x=x, y=y)
 
         # populate the table with data
         counter = 1
+        y = y + int(remarks_label.cget('height')) + 2
         if product_info:
             for item in product_info:
                 col = 0
-                ctk.CTkLabel(widget, text=counter, width=30).grid(row=counter, column=col)
-                ctk.CTkLabel(widget, text=item['product_description'], width=100).grid(row=counter, column=col + 1)
-                ctk.CTkLabel(widget, text=item['item_code'], width=100).grid(row=counter, column=col + 2)
-                ctk.CTkLabel(widget, text=item['packages'], width=50).grid(row=counter, column=col + 3)
-                ctk.CTkLabel(widget, text=item['quantity'], width=50).grid(row=counter, column=col + 4)
-                ctk.CTkLabel(widget, text=item['accepted'], width=50).grid(row=counter, column=col + 5)
-                ctk.CTkLabel(widget, text=item['remarks'], width=100).grid(row=counter, column=col + 6)
+                x = 5
+                col_1 = MyLabel(widget, text=counter, font_size=14, x=x, y=y,
+                                text_color="black", width=w - 20, height=h).create_obj()
+                col_1.place(x=x, y=y)
+
+                x = x + int(col_1.cget("width")) + 5
+                col_2 = MyLabel(widget, text=item['product_description'], font_size=14, x=x, y=y,
+                                text_color="black", width=w + 20, height=h).create_obj()
+                col_2.place(x=x, y=y)
+
+                x = x + int(col_2.cget("width")) + 5
+                col_3 = MyLabel(widget, text=item['item_code'], font_size=14, x=x, y=y,
+                                text_color="black", width=w, height=h).create_obj()
+                col_3.place(x=x, y=y)
+
+                x = x + int(col_3.cget("width")) + 5
+                col_4 = MyLabel(widget, text=item['packages'], font_size=14, x=x, y=y,
+                                text_color="black", width=w, height=h).create_obj()
+                col_4.place(x=x, y=y)
+
+                x = x + int(col_4.cget("width")) + 5
+                col_5 = MyLabel(widget, text=item['quantity'], font_size=14, x=x, y=y,
+                                text_color="black", width=w, height=h).create_obj()
+                col_5.place(x=x, y=y)
+
+                x = x + int(col_5.cget("width")) + 5
+                col_6 = MyLabel(widget, text=item['accepted'], font_size=14, x=x, y=y,
+                                text_color="black", width=w, height=h).create_obj()
+                col_6.place(x=x, y=y)
+
+                x = x + int(col_6.cget("width")) + 5
+                col_7 = MyLabel(widget, text=item['remarks'], font_size=14, x=x, y=y,
+                                text_color="black", width=w, height=h).create_obj()
+                col_7.place(x=x, y=y)
+
+                y = y + int(col_7.cget("height")) + 2
                 counter += 1
         return
 
     def create_bad_product_detail(self, widget, bad_product_info):
         # create labels for the headers
-        sn_label = ctk.CTkLabel(widget, text="S/N", width=70, bg_color="#f0f0f0",
-                                fg_color="#B2ACAB", text_color="black")
-        sn_label.grid(row=0, column=0)
-        description_label = ctk.CTkLabel(widget, text="Product Description", width=140, bg_color="#f0f0f0",
-                                         fg_color="#B2ACAB", text_color="black")
-        description_label.grid(row=0, column=1)
-        code_label = ctk.CTkLabel(widget, text="Damaged Qty", width=140, bg_color="#f0f0f0",
-                                  fg_color="#B2ACAB", text_color="black")
-        code_label.grid(row=0, column=2)
-        packages_label = ctk.CTkLabel(widget, text="Shortage Qty", width=140, bg_color="#f0f0f0",
-                                      fg_color="#B2ACAB", text_color="black")
-        packages_label.grid(row=0, column=3)
-        quantity_label = ctk.CTkLabel(widget, text="Batch Number", width=210, bg_color="#f0f0f0",
-                                      fg_color="#B2ACAB", text_color="black")
-        quantity_label.grid(row=0, column=4)
+        # create labels for the headers
+        h = 35
+        w = (int(widget.cget("width")) - 30) // 5
+        x, y = 5, 5
+        sn_label = MyLabel(widget, text="S/N", font_size=14, font_weight="bold", x=x, y=y,
+                           font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                           fg_color="#B2ACAB", width=w - 20, height=h).create_obj()
+        sn_label.place(x=x, y=y)
+
+        x = x + int(sn_label.cget("width")) + 5
+        description_label = MyLabel(widget, text="Description", font_size=14, font_weight="bold", x=x, y=y,
+                                    font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                                    fg_color="#B2ACAB", width=w + 20, height=h).create_obj()
+        description_label.place(x=x, y=y)
+
+        x = x + int(description_label.cget("width")) + 5
+        code_label = MyLabel(widget, text="Damaged Qty", font_size=14, font_weight="bold", x=x, y=y,
+                             font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                             fg_color="#B2ACAB", width=w, height=h).create_obj()
+        code_label.place(x=x, y=y)
+
+        x = x + int(code_label.cget('width')) + 5
+        packages_label = MyLabel(widget, text="Shortage Qty", font_size=14, font_weight="bold", x=x,
+                                 y=y,
+                                 font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                                 fg_color="#B2ACAB", width=w, height=h).create_obj()
+        packages_label.place(x=x, y=y)
+
+        x = x + int(packages_label.cget("width")) + 5
+        quantity_label = MyLabel(widget, text="Batch Number", font_size=14, font_weight="bold", x=x, y=y,
+                                 font="TkDefaultFont", text_color="black", bg_color="#f0f0f0",
+                                 fg_color="#B2ACAB", width=w, height=h).create_obj()
+        quantity_label.place(x=x, y=y)
 
         # populate the table with data
+        y = y + int(quantity_label.cget('height')) + 2
         if bad_product_info:
             counter = 1
             for item in bad_product_info:
                 col = 0
-                ctk.CTkLabel(widget, text=counter, width=30).grid(row=counter, column=col)
-                ctk.CTkLabel(widget, text=item['product_description'], width=100).grid(row=counter, column=col + 1)
-                ctk.CTkLabel(widget, text=item['damaged_quantity'], width=100).grid(row=counter, column=col + 2)
-                ctk.CTkLabel(widget, text=item['shortage_quantity'], width=100).grid(row=counter, column=col + 3)
-                ctk.CTkLabel(widget, text=item['batch_number'], width=170).grid(row=counter, column=col + 4)
+                x = 5
+                col_1 = MyLabel(widget, text=counter, font_size=14, x=x, y=y,
+                                text_color="black", width=w - 20, height=h).create_obj()
+                col_1.place(x=x, y=y)
+
+                x = x + int(col_1.cget("width")) + 5
+                col_2 = MyLabel(widget, text=item['product_description'], font_size=14, x=x, y=y,
+                                text_color="black", width=w + 20, height=h).create_obj()
+                col_2.place(x=x, y=y)
+
+                x = x + int(col_2.cget("width")) + 5
+                col_3 = MyLabel(widget, text=item['damaged_quantity'], font_size=14, x=x, y=y,
+                                text_color="black", width=w, height=h).create_obj()
+                col_3.place(x=x, y=y)
+
+                x = x + int(col_3.cget("width")) + 5
+                col_4 = MyLabel(widget, text=item['shortage_quantity'], font_size=14, x=x, y=y,
+                                text_color="black", width=w, height=h).create_obj()
+                col_4.place(x=x, y=y)
+
+                x = x + int(col_4.cget("width")) + 5
+                col_5 = MyLabel(widget, text=item['batch_number'], font_size=14, x=x, y=y,
+                                text_color="black", width=w, height=h).create_obj()
+                col_5.place(x=x, y=y)
+
+                y = y + int(col_5.cget("height")) + 2
                 counter += 1
+
         return
 
     def create_header_image(self, window, win_width):
@@ -648,11 +1247,28 @@ class WindowViews(CreateAppView):
             self.toplevel_window.focus()
 
     def get_screen_resolution(self):
+        # Create a hidden Tkinter window to access screen information
         root = tk.Tk()
+        root.attributes('-alpha', 0)  # Hide the window
+
+        # Get the screen width and height in pixels
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
-        root.destroy()  # Destroy the Tkinter window after getting the screen dimensions
-        return screen_width, screen_height
+
+        # A4 size in millimeters
+        a4_width_mm = 210
+        a4_height_mm = 297
+
+        # Calculate A4 size in pixels based on screen resolution
+        screen_width_in_mm = (screen_width * 25.4) / root.winfo_fpixels('1i')  # Convert screen width to mm
+        screen_height_in_mm = (screen_height * 25.4) / root.winfo_fpixels('1i')  # Convert screen height to mm
+
+        a4_width_pixels = int((a4_width_mm / screen_width_in_mm) * screen_width)
+        a4_height_pixels = int((a4_height_mm / screen_height_in_mm) * screen_height)
+
+        root.destroy()
+
+        return a4_width_pixels, a4_height_pixels
 
     def open_haulier_entry(self):
         """
