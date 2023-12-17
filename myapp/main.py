@@ -490,7 +490,7 @@ class Pikanto(WindowViews):
                     detail_btn = MyButton(action_btn_wrapper, text="Ticket", font_size=12,
                                           text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
                                           height=h, width=w, x=x, y=y,
-                                          command=partial(self.display_data_details, item)).create_obj()
+                                          command=partial(self.view_ticket_details, item)).create_obj()
                     detail_btn.place(x=x, y=y)
 
                     x = detail_btn.position_x + int(detail_btn.cget('width')) + 15
