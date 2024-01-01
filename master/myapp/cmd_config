@@ -1,0 +1,32 @@
+cd Pikanto
+cd master/myapp
+virtuale\Scripts\activate
+python welcome.py
+
+
+ngrok auth token: 2Y6SuWkvxplGzPgYbZbVOWiZeDK_5pj28eyQLNQGR1CqFodjy
+path to config file: C:\Users\user\.ngrok2\ngrok.yml
+
+# to do migration within myapp dir, move the db file in the myapp/instance into server/instance
+cd Pikanto
+virtual\Scripts\activate
+cd myapp
+python
+
+import sys
+sys.path.append('C:\\Users\\user\\Documents\\GitHub\\Projects\\Pikanto\\master\\myapp\\server')
+from server.extensions import app, db, migrate
+from flask.cli import FlaskGroup
+cli = FlaskGroup(app)
+
+with app.app_context():
+    # Create a migration (if you haven't already created one)
+    # cli.main(args=['db', 'init'])
+
+    # migrate the database models
+    cli.main(args=['db', 'migrate'])
+
+    # Upgrade the database to the latest version
+    cli.main(args=['db', 'upgrade'])
+
+# after the upgrade, move the db file back into myapp/instance

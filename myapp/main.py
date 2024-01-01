@@ -7,13 +7,15 @@ from appclasses.buttonclass import MyButton
 from appclasses.textbox_class import MyTexBox
 from helpers import myfunctions as func
 from threading import Thread
-from server.extensions import db, app
 import customtkinter as ctk
 from functools import partial
 from appclasses.toplevel_class import DialogueBox
 from appclasses.report_messenger import Messenger
 from appclasses.dotdict_class import DotDict
 from appclasses.group_class import SubGroupCreator
+import os
+import sys
+import json
 import time
 from datetime import datetime 
 
@@ -26,19 +28,23 @@ class Pikanto(WindowViews):
         super(Pikanto, self).__init__()
         self.toplevel_window = None
         self.selected_value = {}
+        self.current_user = None
+        self.fetched_resource = {}
         self.create_base_view()
         self.check_internet_connection()
+        if len(sys.argv) > 1:
+            user_id = sys.argv[1]
+            self.thread_request(self.load_current_user, int(user_id))
+        self.fetch_resources()
 
     def create_report_form(self):
         """creates the dialogue box for entering email report data"""
         # check for existing initial weight data record for the vehicle (self.selected_value['haulier'])
-        #self.weight_data = 234
         worker = Messenger(self.server_url, '/search/existing_weight_record')
         response = worker.query_server({'vehicle_id': self.selected_value['vehicle_id']})
         record = response['data']
         if record:
             record = DotDict(response['data'])
-            #self.weight_data = self.weight_data * 7
             header_text = "Update Vehicle Record"
         else:
             header_text = "Create New Record"
@@ -236,7 +242,7 @@ class Pikanto(WindowViews):
         d_w = (int(div6.cget('width')) - 20) // 3
         weight_1 = ctk.CTkEntry(div6, width=d_w, height=d_h)
         if record:
-            weight_1.insert(0, "{}  |  {}".format(record.initial_weight, record.initial_time))
+            weight_1.insert(0, "{}{}    |  {}".format(record.initial_weight, self.unit, record.initial_time))
         else:
             weight_1.insert(0, self.weight_data)
         weight_1.configure(state='disabled')
@@ -247,7 +253,7 @@ class Pikanto(WindowViews):
         weight_2 = ctk.CTkEntry(div6, placeholder_text='Vehicle exit weight appears here', width=d_w, height=d_h)
         # insert the value here
         if record:
-            weight_2.insert(0, "{}  |  {}".format(self.weight_data, datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")))
+            weight_2.insert(0, "{}{}    |  {}".format(self.weight_data, self.unit, datetime.now().strftime("%d-%m-%Y %I:%M:%S %p")))
         weight_2.configure(state='disabled')
         weight_2.position_x = weight_1.position_x + int(weight_1.cget('width')) + 5
         weight_2.position_y = weight_1.position_y
@@ -308,6 +314,7 @@ class Pikanto(WindowViews):
             mr['customer'] = data['customer_id']
             mr['haulier'] = data['haulier']
             mr['weight_1'] = data['weight_1'].get()
+            mr['operator'] = self.current_user.id
             messenger = Messenger(self.server_url, '/save_records')
             if record:
                 mr['weight_1'] = record.initial_weight
@@ -321,13 +328,13 @@ class Pikanto(WindowViews):
 
                 if response['status'] == 1:
                     self.update_status(response['message'])
-                    self.update_status('Preparing to send notification to WHSE Team, please wait...')
-                    sender = "Gate house security"
-                    request_email = "oluwasegun.a@ugeechemicals.com"
+                    self.update_status('Preparing to send notification to Waybill Technician, please wait...')
+                    sender = self.current_user.email
+                    request_email = self.waybill_tech_email
                     subject = f"Prepare Waybill for {mr['vehicle_id']}"
                     email_body = "Please prepare waybill for the vehicle ID quoted above.\n\n"
                     email_body += "Regards,\n\n"
-                    email_body += "Gate House Security Team."
+                    email_body += f'{self.current_user.full_name}.'
                     messenger = SendMail(sender, request_email, subject)
                     messenger.send_email_with_application(email_body)
             else:
@@ -347,21 +354,22 @@ class Pikanto(WindowViews):
 
         return
 
-    def view_weight_records(self):
+    def view_weight_records(self, data=None):
         """fetches weight records from database and display them on the main display window"""
         # check if the view is open and close
         if self.record_view_display:
             self.record_view_display.destroy()
 
-        # fetch data from database
-        my_query = Messenger(self.server_url, '/fetch_resources/weight_records')
-        response = my_query.query_server({'data': None})
-        if response['status'] == 1:
-            data = response['data']
-        else:
-            data = None
-            func.notify_user('No records found!')
-            return
+        # fetch data from database if data is None
+        if not data:
+            my_query = Messenger(self.server_url, '/fetch_resources/weight_records')
+            response = my_query.query_server({'data': None})
+            if response['status'] == 1:
+                data = response['data']
+            else:
+                data = None
+                func.notify_user('No records found!')
+                return
 
         if data:
             items_per_page = 5
@@ -378,8 +386,7 @@ class Pikanto(WindowViews):
                 w = int(self.display_label.cget('width'))
                 x, y = self.display_label.position_x, self.display_label.position_y
                 report_label = MyLabel(self, text="", bg_color="#ffffff", fg_color="#c9c9c9", height=h, width=w, x=x,
-                                       y=y) \
-                    .create_obj()
+                                       y=y).create_obj()
                 report_label.place(x=x, y=y)
                 self.record_view_display = report_label
 
@@ -401,22 +408,26 @@ class Pikanto(WindowViews):
                                   fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
                                   font_size=18, font_weight="bold", corner_radius=8).create_obj()
                 head_1.place(x=x, y=y)
+                head_1.configure(state='disabled')
                 x = head_1.position_x + int(head_1.cget('width')) + 5
                 head_2 = MyTexBox(report_header_label, text='VEHICLE ID', bg_color="#ffffff",
                                   fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
                                   font_size=18, font_weight="bold", corner_radius=8).create_obj()
                 head_2.place(x=x, y=y)
+                head_2.configure(state='disabled')
                 x = head_2.position_x + int(head_2.cget('width')) + 5
                 head_3 = MyTexBox(report_header_label, text='TIME', bg_color="#ffffff",
                                   fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
                                   font_size=18, font_weight="bold", corner_radius=8).create_obj()
                 head_3.place(x=x, y=y)
+                head_3.configure(state='disabled')
                 w = ((int(report_header_label.cget('width')) - 10) // 3)
                 x = head_3.position_x + int(head_3.cget('width')) + 5
                 head_4 = MyTexBox(report_header_label, text='ACTIONS', bg_color="#ffffff",
                                   fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
                                   font_size=18, font_weight="bold", corner_radius=8).create_obj()
                 head_4.place(x=x, y=y)
+                head_4.configure(state='disabled')
 
                 # create a wrapper where all the items are going to be displayed
                 h = int(report_label.cget('height')) - (50 + int(report_header_label.cget('height')))
@@ -449,6 +460,7 @@ class Pikanto(WindowViews):
                                      fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
                                      font_size=14, corner_radius=8).create_obj()
                     col_1.place(x=d_x, y=d_y)
+                    col_1.configure(state='disabled')
 
                     # create an indicator to show if item is approved or not
                     if item.approval_status == 'approved':
@@ -461,18 +473,21 @@ class Pikanto(WindowViews):
                                          fg_color=bg_color, height=(d_h / 2) - 5, width=(d_w / 2) - 10, x=5, y=25,
                                          text_color="#000000", font_size=12, corner_radius=50).create_obj()
                     indicator.place(x=5, y=25)
+                    indicator.configure(state='disabled')
 
                     d_x = head_2.position_x
                     col_2 = MyTexBox(item_wrapper, text=item.vehicle_id, bg_color="#2f6c60",
                                      fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
                                      font_size=14, corner_radius=8).create_obj()
                     col_2.place(x=d_x, y=d_y)
+                    col_2.configure(state='disabled')
 
                     d_x = head_3.position_x
                     col_3 = MyTexBox(item_wrapper, text=item.initial_time, bg_color="#2f6c60",
                                      fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
                                      font_size=14, corner_radius=8).create_obj()
                     col_3.place(x=d_x, y=d_y)
+                    col_3.configure(state='disabled')
 
                     # create wrapper for the action buttons
                     w = int(head_4.cget('width')) - 5
@@ -567,221 +582,6 @@ class Pikanto(WindowViews):
 
             display_items(1)
 
-    def view_weight_recordsxxx(self):
-        """fetches weight records from database and display them on the main display window"""
-        # check if the view is open and close
-        if self.record_view_display:
-            self.record_view_display.destroy()
-
-        # fetch data from database
-        my_query = Messenger(self.server_url, '/fetch_resources/weight_records')
-        response = my_query.query_server({'data': None})
-        if response['status'] == 1:
-            data = response['data']
-        else:
-            data = None
-            func.notify_user('No records found!')
-            return
-
-        if data:
-            items_per_page = 5
-            grouper = SubGroupCreator(data)
-            grouper.create_sub_groups(items_per_page)
-            total_groups = grouper.total_groups()
-
-            def display_items(group_number):
-                """function creates a widget that displays certain number of data on the main display"""
-                items_to_display = grouper.get_group(group_number)
-
-                # create a label the size of the main display label
-                h = int(self.display_label.cget('height'))
-                w = int(self.display_label.cget('width'))
-                x, y = self.display_label.position_x, self.display_label.position_y
-                report_label = MyLabel(self, text="", bg_color="#ffffff", fg_color="#c9c9c9", height=h, width=w, x=x,
-                                       y=y) \
-                    .create_obj()
-                report_label.place(x=x, y=y)
-                self.record_view_display = report_label
-
-                #  create header for the form
-                h = 60
-                x, y = 0, 0
-                report_header_label = MyLabel(report_label, text="", bg_color="#ffffff", fg_color="#ffffff",
-                                              height=h, width=w, x=x, y=y, text_color="#000000", font_size=28,
-                                              font_weight="bold") \
-                    .create_obj()
-                report_header_label.place(x=x, y=y)
-
-                # create 4 header widgets in the header label
-                h = int(report_header_label.cget('height')) - 10
-                # w = (((int(report_header_label.cget('width'))-10) // 3) * 2)//3
-                w = ((int(report_header_label.cget('width')) - 10) * (2 / 9)) - 5
-                x, y = 5, 5
-                head_1 = MyTexBox(report_header_label, text='HAULIER', bg_color="#ffffff",
-                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
-                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
-                head_1.place(x=x, y=y)
-                x = head_1.position_x + int(head_1.cget('width')) + 5
-                head_2 = MyTexBox(report_header_label, text='VEHICLE ID', bg_color="#ffffff",
-                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
-                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
-                head_2.place(x=x, y=y)
-                x = head_2.position_x + int(head_2.cget('width')) + 5
-                head_3 = MyTexBox(report_header_label, text='TIME', bg_color="#ffffff",
-                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
-                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
-                head_3.place(x=x, y=y)
-                w = ((int(report_header_label.cget('width')) - 10) // 3)
-                x = head_3.position_x + int(head_3.cget('width')) + 5
-                head_4 = MyTexBox(report_header_label, text='ACTIONS', bg_color="#ffffff",
-                                  fg_color="#2f6c60", height=h, width=w, x=x, y=y, text_color="#FFFFFF",
-                                  font_size=18, font_weight="bold", corner_radius=8).create_obj()
-                head_4.place(x=x, y=y)
-
-                # create a wrapper where all the items are going to be displayed
-                h = int(report_label.cget('height')) - (50 + int(report_header_label.cget('height')))
-                w = int(report_label.cget('width'))
-                x, y = 0, int(report_header_label.cget('height')) + report_header_label.position_y
-                content_wrapper = MyLabel(report_label, text='', bg_color="#2f6c60",
-                                          fg_color="#ffffff", height=h, width=w, x=x, y=y,
-                                          font_weight="bold", corner_radius=8).create_obj()
-                content_wrapper.place(x=x, y=y)
-
-                # iterate over the list of items to display and create widgets to display
-                # ...information for each item wrt to the header
-                item_position_y = 0
-                for item in items_to_display:
-                    item = DotDict(item)
-                    skipper = h = content_wrapper.cget('height') // items_per_page
-                    w = int(content_wrapper.cget('width')) - 10
-                    y = item_position_y
-                    x = 5
-                    item_wrapper = MyLabel(content_wrapper, text='', bg_color="#2f6c60",
-                                           fg_color="#2f6c60", height=h, width=w, x=x, y=y,
-                                           font_weight="bold", corner_radius=8).create_obj()
-                    item_wrapper.place(x=x, y=y)
-
-                    d_h = h - 20
-                    d_w = int(head_1.cget('width')) - 5
-                    d_x = head_1.position_x
-                    d_y = 10
-                    col_1 = MyTexBox(item_wrapper, text=item.haulier, bg_color="#2f6c60",
-                                     fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
-                                     font_size=14, corner_radius=8).create_obj()
-                    col_1.place(x=d_x, y=d_y)
-
-                    # create an indicator to show if item is approved or not
-                    if item.approval_status == 'approved':
-                        bg_color = '#53f925'
-                        indicator_text = 'approved'
-                    else:
-                        bg_color = 'grey'
-                        indicator_text = 'pending'
-                    indicator = MyTexBox(col_1, text=indicator_text, bg_color="#ffffff",
-                                         fg_color=bg_color, height=(d_h / 2) - 5, width=(d_w / 2) - 10, x=5, y=25,
-                                         text_color="#000000", font_size=12, corner_radius=50).create_obj()
-                    indicator.place(x=5, y=25)
-
-                    d_x = head_2.position_x
-                    col_2 = MyTexBox(item_wrapper, text=item.vehicle_id, bg_color="#2f6c60",
-                                     fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
-                                     font_size=14, corner_radius=8).create_obj()
-                    col_2.place(x=d_x, y=d_y)
-
-                    d_x = head_3.position_x
-                    col_3 = MyTexBox(item_wrapper, text=item.initial_time, bg_color="#2f6c60",
-                                     fg_color="#ffffff", height=d_h, width=d_w, x=d_x, y=d_y, text_color="#000000",
-                                     font_size=14, corner_radius=8).create_obj()
-                    col_3.place(x=d_x, y=d_y)
-
-                    # create wrapper for the action buttons
-                    w = int(head_4.cget('width')) - 5
-                    x = head_4.position_x
-                    action_btn_wrapper = MyLabel(item_wrapper, text='', bg_color="#2f6c60",
-                                                 fg_color="#ffffff", height=d_h, width=w, x=x, y=d_y,
-                                                 font_weight="bold", corner_radius=8).create_obj()
-                    action_btn_wrapper.place(x=x, y=d_y)
-
-                    # buttons
-                    h = 30
-                    w = (int(action_btn_wrapper.cget('width')) // 3) - 15
-                    x = 5
-                    y = (int(action_btn_wrapper.cget('height')) - h) // 2
-                    detail_btn = MyButton(action_btn_wrapper, text="Details", font_size=12,
-                                          text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
-                                          height=h, width=w, x=x, y=y,
-                                          command=partial(self.display_data_details, item)).create_obj()
-                    detail_btn.place(x=x, y=y)
-
-                    x = detail_btn.position_x + int(detail_btn.cget('width')) + 15
-                    waybill_btn = MyButton(action_btn_wrapper, text="Waybill", font_size=12,
-                                           text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
-                                           height=h, width=w, x=x, y=y,
-                                           command=partial(self.open_waybill_entry, item)).create_obj()
-                    waybill_btn.place(x=x, y=y)
-                    x = waybill_btn.position_x + int(waybill_btn.cget('width')) + 15
-                    ticket_btn = MyButton(action_btn_wrapper, text="Request", font_size=12,
-                                          text_color="#ffffff", bg_color="#ffffff", fg_color="#6699cc",
-                                          height=h, width=w, x=x, y=y,
-                                          command=partial(self.send_approval_request, item)).create_obj()
-                    if not item.ticket_ready or not item.waybill_ready or item.approval_status != 'pending':
-                        ticket_btn.configure(state='disabled')
-                    ticket_btn.place(x=x, y=y)
-
-                    item_position_y += skipper
-
-                # create buttons to navigate different pages of the records
-                h = 50
-                w = int(report_label.cget('width'))
-                y = int(report_label.cget('height')) - 50
-                x = 0
-                btn_wrapper = MyLabel(report_label, text='', bg_color="#2f6c60",
-                                      fg_color="#ffffff", height=h, width=w, x=x, y=y,
-                                      font_weight="bold", corner_radius=8).create_obj()
-                btn_wrapper.place(x=x, y=y)
-
-                h = 20
-                w = 40
-                x = (btn_wrapper.cget('width') // 2) - 50
-                y = 10
-                prev_btn = MyButton(btn_wrapper, text="<< Prev", font_size=12, text_color="#ffffff",
-                                    bg_color="#ffffff", fg_color="#6699cc", height=h, width=w, x=x, y=y,
-                                    ).create_obj()
-                if group_number == 1:
-                    prev_btn.configure(state='disabled')
-                prev_btn.place(x=x, y=y)
-
-                x = (btn_wrapper.cget('width') // 2) + 10
-                next_btn = MyButton(btn_wrapper, text="Next >>", font_size=12, text_color="#ffffff",
-                                    bg_color="#ffffff", fg_color="#6699cc", height=h, width=w, x=x, y=y,
-                                    ).create_obj()
-                if group_number == total_groups:
-                    next_btn.configure(state='disabled')
-                next_btn.place(x=x, y=y)
-
-                # functions to handle prev and next button clicks
-                def on_prev_click():
-                    # destroy current view
-                    report_label.destroy()
-                    display_items(group_number - 1)
-
-                def on_next_click():
-                    # destroy current view
-                    report_label.destroy()
-                    display_items(group_number + 1)
-
-                prev_btn.configure(command=on_prev_click)
-                next_btn.configure(command=on_next_click)
-
-                # button to exit the record view from screen
-                x = x + 250
-                exit_btn = MyButton(btn_wrapper, text="Exit", font_size=12, text_color="#000000",
-                                    bg_color="#ffffff", fg_color="#e3b448", height=h, width=w, x=x, y=y,
-                                    command=lambda: report_label.destroy()).create_obj()
-                exit_btn.place(x=x, y=y)
-
-            display_items(1)
-
     def window_animation(self, text):
         """displays animation on the main display window"""
         h = int(self.display_label.cget('height')) // 3
@@ -795,7 +595,6 @@ class Pikanto(WindowViews):
 
     def record_data(self):
         """generates a dialogue box for user to select transport company"""
-        options = {'option 1': 1, 'option 2': 2, 'option 3': 3, 'option 4': 4, 'option 5': 5}
 
         self.selected_value['vehicle_id'] = None
 
@@ -845,14 +644,16 @@ class Pikanto(WindowViews):
         """fetches all usable data from the database"""
         customer = None
         haulier = None
+        user = None
 
         # fetch data from database
         my_query = Messenger(self.server_url, '/fetch_resources/all')
         response = my_query.query_server({'data': None})
 
         if response['status'] == 1:
-            customer = response['customers']
-            haulier = response['hauliers']
+            self.fetched_resource['customers'] = customer = response['customers']
+            self.fetched_resource['hauliers'] = haulier = response['hauliers']
+            self.fetched_resource['users'] = user = response['users']
 
         return customer, haulier
 
@@ -866,11 +667,79 @@ class Pikanto(WindowViews):
                 self.display_word_letter_by_letter(word)
             self.update_status('Internet Connection was restored!')
 
-        self.thread_request(run_notification)
+        if not func.is_internet_connected():
+            self.thread_request(run_notification)
+
+        return
+
+    def load_current_user(self, user_id):
+        """creates an instance of the current_user class using user data from database server"""
+        # get system ip
+        data = {}
+        data['ip'] = func.get_ip_address()
+        data['user_id'] = user_id
+
+        # send a request to server
+        worker = Messenger(self.server_url, '/user?action=get-current-user')
+        response = worker.query_server(data)
+
+        if response['status'] != 1:
+            # log user out
+            self.logout_user()
+
+        self.current_user = CurrentUser(response['data'])
+
+        if self.current_user:
+            self.update_status(f'welcome {self.current_user.full_name}.')
+
+        return
+
+    def logout_user(self):
+        """returns user to login page"""
+        # get system ip
+        data = {}
+        data['ip'] = func.get_ip_address()
+
+        # send a request to server
+        worker = Messenger(self.server_url, '/user?action=logout-user')
+        worker.query_server(data)
+
+        self.withdraw()
+        os.system("python welcome.py")
+        self.destroy()
+        return
+
+    def run_periodically(self):
+        """shots down and starts up ngrok agent every less than 2 hours."""
+        if func.is_ngrok_running():
+            # shot down ngrok
+            self.stop_ngrok(self.ngrok_url)
+
+            # wait for 2 seconds
+            time.sleep(2)
+
+        # check if ngrok is running already
+        # start ngrok
+        self.start_ngrok()
+
+        # wait for a little less than 1hr 40mins then run again
+        self.after(6000000, self.run_periodically)
+
+
+class CurrentUser:
+    """class for create a user instance"""
+    def __init__(self, user_obj):
+        self.full_name = user_obj['full_name']
+        self.admin_type = user_obj['admin_type']
+        self.email = user_obj['email']
+        self.activated = user_obj['activated']
+        self.id = user_obj['user_id']
+        self.first_name = user_obj['first_name']
+        self.last_name = user_obj['last_name']
+
 
 
 if __name__ == "__main__":
     gui = Pikanto()
-    # Thread(target=lambda: app.run(host="172.27.208.1", port=8088, debug=True, use_reloader=False)).start()
-    Thread(target=lambda: app.run(host="0.0.0.0", port=8088, debug=True, use_reloader=False)).start()
+    # Thread(target=lambda: app.run(host="0.0.0.0", port=8088, debug=True, use_reloader=False)).start()
     gui.mainloop()

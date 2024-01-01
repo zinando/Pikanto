@@ -1,7 +1,7 @@
 cd Pikanto
 cd myapp
 virtuale\Scripts\activate
-python main.py
+python welcome.py
 
 
 ngrok auth token: 2Y6SuWkvxplGzPgYbZbVOWiZeDK_5pj28eyQLNQGR1CqFodjy
