@@ -414,7 +414,6 @@ class WindowViews(CreateAppView):
                 y = top.winfo_rooty()
                 width = top.winfo_width()
                 height = top.winfo_height() - exclude
-                print(f"x: {x}, y: {y}, w: {width}, h: {height}")
                 self.generate_printable_view(top, width, height, x, y)
 
             waybill_print_button.configure(command=print_waybill)

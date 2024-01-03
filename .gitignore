@@ -6,3 +6,5 @@
 #*.flaskenv
 virtual/
 virtuale/
+exec/
+installer/

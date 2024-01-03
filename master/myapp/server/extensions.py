@@ -707,6 +707,7 @@ def user():
         return json.dumps({'status': 1, 'data': worker, 'message': message, 'error': [None]})
 
     elif action == "signup-super-admin":
+        # db.create_all()
         data = request.get_json()
 
         # check if super admin exists
@@ -745,6 +746,7 @@ def user():
         return json.dumps({'status': 1, 'data': data, 'message': message, 'error': [None]})
 
     elif action == "login-user":
+        # db.create_all()
         data = request.get_json()
 
         # check if user exists

@@ -2,7 +2,6 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from PIL import Image, ImageTk
-import serial
 import time
 from appclasses.file_class import FileHandler
 from threading import Thread
@@ -18,6 +17,7 @@ import webbrowser
 import tempfile
 import socket
 import psutil
+import serial
 
 def notify_user(msg=None):
     """ Pops a message when there is need to. Message to be displayed can be given as an arg """
@@ -122,7 +122,6 @@ def addspace(obj_position, obj_size):
 
 def get_massxxx(scale_settings=None):
     # ser = serial.Serial(port='/dev/ttyS0', ## if using Linux serial
-    print(scale_settings)
     if scale_settings:
         port = scale_settings['port']
         baudrate = scale_settings['baudrate']
@@ -333,11 +332,9 @@ def store_app_settings(settings):
 
         message = f"Settings saved to '{file_path}'"
         status = 1
-        print(message)
     except Exception as e:
         message = f"Error writing settings to '{file_path}': {e}"
         status = 2
-        print(message)
 
     return {'status': status, 'message': message, 'data': None}
 
@@ -354,11 +351,9 @@ def read_app_settings():
         data = None
         status = 2
         message = f"File '{file_path}' not found."
-        print(message)
     except json.JSONDecodeError:
         data = None
         status = 2
         message = f"Error decoding JSON from '{file_path}'. Check if the file contains valid JSON."
-        print(message)
 
     return {'status': status, 'message': message, 'data': data}

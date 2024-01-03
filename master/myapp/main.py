@@ -37,7 +37,7 @@ class Pikanto(WindowViews):
             user_id = sys.argv[1]
             self.thread_request(self.load_current_user, int(user_id))
         self.fetch_resources()
-        #self.run_periodically()
+        self.run_periodically()
 
     def create_report_form(self):
         """creates the dialogue box for entering email report data"""

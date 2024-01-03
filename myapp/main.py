@@ -741,5 +741,4 @@ class CurrentUser:
 
 if __name__ == "__main__":
     gui = Pikanto()
-    # Thread(target=lambda: app.run(host="0.0.0.0", port=8088, debug=True, use_reloader=False)).start()
     gui.mainloop()

@@ -1,11 +1,12 @@
 """This is the welcome page class module"""
+import sys
+sys.path.append("C:\\Users\\user\\Documents\\GitHub\\Projects\\Pikanto\\myapp\\virtuale\\Lib\\site-packages")
 import customtkinter as ctk
 from appclasses.labelclass import MyLabel
 from appclasses.buttonclass import MyButton
 from helpers import myfunctions as func
 from appclasses.report_messenger import Messenger
 import os
-import sys
 import time
 import requests
 import threading
@@ -104,9 +105,8 @@ class Welcome(ctk.CTk):
                 # Try making a request to the local Flask server
                 response = requests.get(self.server_url)
                 if response.status_code == 200:
-                    print("Flask server is already running.")
+                    pass
             except requests.ConnectionError:
-                print("Flask server is not running.")
                 # Start the Flask server
                 self.show_server_warning()
         return
