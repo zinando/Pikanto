@@ -265,10 +265,10 @@ class Pikanto(WindowViews):
         weight_3 = ctk.CTkEntry(div6, placeholder_text='Net weight appears here', width=d_w, height=d_h)
         # insert the value here
         if record:
-            if self.weight_data > int(record.initial_weight):
-                difference = self.weight_data - int(record.initial_weight)
+            if int(self.weight_data) > int(record.initial_weight):
+                difference = int(self.weight_data) - int(record.initial_weight)
             else:
-                difference = int(record.initial_weight) - self.weight_data
+                difference = int(record.initial_weight) - int(self.weight_data)
             weight_3.insert(0, difference)
         weight_3.configure(state='disabled')
         weight_3.position_x = weight_2.position_x + int(weight_2.cget('width')) + 5
@@ -656,6 +656,10 @@ class Pikanto(WindowViews):
             self.fetched_resource['customers'] = customer = response['customers']
             self.fetched_resource['hauliers'] = haulier = response['hauliers']
             self.fetched_resource['users'] = user = response['users']
+        else:
+            self.fetched_resource['customers'] = []
+            self.fetched_resource['hauliers'] = []
+            self.fetched_resource['users'] = []
 
         return customer, haulier
 

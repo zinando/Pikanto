@@ -1,8 +1,8 @@
 # using SendGrid's Python Library
 # https://github.com/sendgrid/sendgrid-python
 import os
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
+# from sendgrid import SendGridAPIClient
+# from sendgrid.helpers.mail import Mail
 import datetime
 import smtplib
 from email.mime.text import MIMEText
