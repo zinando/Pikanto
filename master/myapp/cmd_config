@@ -1,5 +1,6 @@
-cd Desktop/Pikanto/master/myapp
-virtual\Scripts\activate
+cd Pikanto/
+myapp\virtuale\Scripts\activate
+cd master/myapp
 python welcome.py
 
 

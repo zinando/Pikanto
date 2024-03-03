@@ -8,5 +8,5 @@ virtual/
 virtuale/
 exec/
 installer/
-cmd_config
+*cmd_config
 
