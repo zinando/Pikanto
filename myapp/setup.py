@@ -3,12 +3,17 @@ from cx_Freeze import setup, Executable
 
 base = None
 
-#if sys.platform == 'win32':
-    #base = 'Win32GUI'
+if sys.platform == 'win32':
+    base = 'Win32GUI'
 
 options = {
     'build_exe': {
-        'include_files': ['assets', 'appclasses', 'helpers', 'static', 'main.py', 'app_settings.json'],  # Add any additional files or data needed here
+        "packages": ["tkinter", "customtkinter", "validators", "img2pdf", "reportlab", "fpdf"],
+        'include_files': ['assets', 'appclasses', "virtual/Lib/site-packages/validators", 
+        'helpers', 'static', 'main.py', 'app_settings.json', "ticket_temp.docx", "waybill_temp.docx",
+        "virtual/Lib/site-packages/img2pdf.py", "virtual/Lib/site-packages/reportlab", 
+        "virtual/Lib/site-packages/fpdf","virtual/Lib/site-packages/jp2.py",
+        "virtual/Lib/site-packages/psutil"],  # Add any additional files or data needed here
     },
 }
 

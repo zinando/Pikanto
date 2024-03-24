@@ -62,7 +62,7 @@ def update_template(replacements, file_path, output_path):
                         headers.insert(0, 'S/N')
                         for j, header in enumerate(headers):
                             if j == 0:
-                                table.rows[i + 1].cells[j].text = f'{j+1}'
+                                table.rows[i + 1].cells[j].text = f'{i+1}'
                             else:
                                 table.rows[i+1].cells[j].text = f'{row_data[header]}'
                 break

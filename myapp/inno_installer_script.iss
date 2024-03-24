@@ -10,7 +10,7 @@
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={commonpf}\{#MyAppName}
+DefaultDirName={commonappdata}\{#MyAppName}
 OutputDir=Output
 OutputBaseFilename={#MyAppName}
 Compression=lzma2/max

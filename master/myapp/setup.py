@@ -11,7 +11,7 @@ options = {
         "packages": ["tkinter", "customtkinter", "validators", "img2pdf", "reportlab", "fpdf"],
         'include_files': ['assets', 'appclasses', "virtual/Lib/site-packages/validators", 
         'helpers', 'static', 'main.py', 'app_settings.json', 'flask_app.py', 'server', 
-        'instance', 
+        'instance', "ticket_temp.docx", "waybill_temp.docx",
         "virtual/Lib/site-packages/img2pdf.py", "virtual/Lib/site-packages/reportlab", 
         "virtual/Lib/site-packages/fpdf","virtual/Lib/site-packages/jp2.py",
         "virtual/Lib/site-packages/psutil"],  # Add any additional files or data needed here

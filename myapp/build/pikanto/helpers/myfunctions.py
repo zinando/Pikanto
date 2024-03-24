@@ -2,7 +2,9 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from PIL import Image, ImageTk
+import serial
 import time
+from docx import Document
 from appclasses.file_class import FileHandler
 from threading import Thread
 import re
@@ -12,12 +14,12 @@ import json
 import img2pdf
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
-from fpdf import FPDF
+# from fpdf import FPDF
 import webbrowser
 import tempfile
 import socket
 import psutil
-import serial
+
 
 def notify_user(msg=None):
     """ Pops a message when there is need to. Message to be displayed can be given as an arg """
@@ -25,6 +27,48 @@ def notify_user(msg=None):
         messagebox.showinfo("Alert!", f"I am a message button.")
     else:
         messagebox.showinfo("Alert!", "{}".format(msg))
+
+
+def update_template(replacements, file_path, output_path):
+    doc = Document(file_path)
+
+    # replace variables in the doc file body
+    for p in doc.paragraphs:
+        for key, value in replacements.items():
+            if key in p.text:
+                inline = p.runs
+                for i in range(len(inline)):
+                    if key in inline[i].text:
+                        text = inline[i].text.replace(key, str(value))
+                        inline[i].text = text
+
+    # replace variables in the table cells if any
+    if doc.tables:
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for paragraph in cell.paragraphs:
+                        for key, value in replacements.items():
+                            if key in paragraph.text:
+                                paragraph.text = paragraph.text.replace(key, str(value))
+    # fill the table cells with product data
+    if doc.tables:
+        for table in doc.tables:
+            if len(replacements['products']) > 0:
+                products = replacements['products']
+                for i, row_data in enumerate(products):
+                    if i < len(table.rows):
+                        headers = list(row_data.keys())
+                        headers.insert(0, 'S/N')
+                        for j, header in enumerate(headers):
+                            if j == 0:
+                                table.rows[i + 1].cells[j].text = f'{i+1}'
+                            else:
+                                table.rows[i+1].cells[j].text = f'{row_data[header]}'
+                break
+
+    doc.save(output_path)
+    return
 
 
 def image_to_pdf_open(image_path):
@@ -122,6 +166,7 @@ def addspace(obj_position, obj_size):
 
 def get_massxxx(scale_settings=None):
     # ser = serial.Serial(port='/dev/ttyS0', ## if using Linux serial
+    print(scale_settings)
     if scale_settings:
         port = scale_settings['port']
         baudrate = scale_settings['baudrate']
@@ -332,9 +377,11 @@ def store_app_settings(settings):
 
         message = f"Settings saved to '{file_path}'"
         status = 1
+        print(message)
     except Exception as e:
         message = f"Error writing settings to '{file_path}': {e}"
         status = 2
+        print(message)
 
     return {'status': status, 'message': message, 'data': None}
 
@@ -351,9 +398,11 @@ def read_app_settings():
         data = None
         status = 2
         message = f"File '{file_path}' not found."
+        print(message)
     except json.JSONDecodeError:
         data = None
         status = 2
         message = f"Error decoding JSON from '{file_path}'. Check if the file contains valid JSON."
+        print(message)
 
     return {'status': status, 'message': message, 'data': data}

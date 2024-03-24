@@ -29,7 +29,7 @@ class Welcome(ctk.CTk):
         self.width = width
         position_x = (self.winfo_screenwidth() // 2) - (width // 2)
         position_y = (self.winfo_screenheight() // 2) - (height // 2)
-        self.geometry("{}x{}+{}+{}".format(width, height, position_x * 2, position_y))
+        self.geometry("{}x{}+{}+{}".format(width, height, position_x, position_y))
         self.server_url = self.get_server_url()
         self.check_flask_server()
 

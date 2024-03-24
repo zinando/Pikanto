@@ -252,7 +252,7 @@ class WindowViews(CreateAppView):
             bad_products_info = bad_products if bad_products else []
 
             # Create the main window to fill the screen
-            screen_width, screen_height = 800, 800
+            screen_width, screen_height = 800, 700
             top = DialogueBox(screen_width, screen_height, fg_color="#e3e7f0")
 
             # create a title for the waybill

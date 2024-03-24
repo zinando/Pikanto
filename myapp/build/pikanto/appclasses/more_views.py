@@ -10,7 +10,7 @@ import tkinter as tk
 from PIL import Image, ImageTk, ImageGrab
 import tempfile
 import subprocess
-import os
+from docx2pdf import convert
 from functools import partial
 import platform
 import webbrowser
@@ -62,28 +62,32 @@ class WindowViews(CreateAppView):
             # Create the main window to fill the screen
             top = ctk.CTkToplevel(self)
             self.toplevel_window = top
-
-            w, h = self.get_screen_resolution2()
-            top_height = 400
+            top_height = 600
             top_width = 1100
-
-            position_w = 50
-            position_h = 50
-            top.geometry(
-                f"{top_width}x{top_height}+{position_w}+{position_h}")
             top.title("Ticket For Logistics Operation")
 
-            # Create submain_frame_1 to hold ticket_frame and action_buttons_frame
-            h = top_height - 50
+            # Get screen width and height
+            screen_width = self.winfo_screenwidth()
+            screen_height = self.winfo_screenheight()
+
+            # Calculate x and y coordinates for the window to be centered
+            dx = (screen_width / 2) - (top_width / 2)
+            dy = (screen_height / 2) - (top_height / 2)
+
+            # Set window dimensions and position
+            top.geometry('%dx%d+%d+%d' % (top_width, top_height, dx, dy))
+
+            # Create submain_frame_1 to hold ticket_frame
+            h = top_height - 200
             submain_frame_1 = ctk.CTkFrame(top, width=top_width, height=h)
             submain_frame_1.pack(fill=tk.BOTH, expand=True)
 
             # Create the ticket frame inside submain_frame_1
             self.create_ticket_detail(submain_frame_1, ticket_data)
 
-            # Create the action buttons frame inside submain_frame_1
-            action_buttons_frame = ctk.CTkFrame(top)
-            action_buttons_frame.pack(fill=tk.X)
+            # Create the action buttons frame
+            action_buttons_frame = ctk.CTkFrame(top, height=100, width=top_width)
+            action_buttons_frame.pack(fill=tk.BOTH, expand=True)
 
             # Create the print button for the ticket frame
             ticket_print_button = ctk.CTkButton(action_buttons_frame, text="Print Ticket", height=25, width=50,
@@ -96,7 +100,7 @@ class WindowViews(CreateAppView):
             edit_button.pack(side=tk.LEFT, padx=5, pady=5)
             edit_button.configure(command=lambda: self.thread_request(self.edit_ticket, ticket_data['id'], edit_button))
 
-            def print_ticket():
+            def print_tickets():
                 top.update()
                 width = submain_frame_1.winfo_width() - 25
                 height = submain_frame_1.winfo_height()
@@ -104,12 +108,122 @@ class WindowViews(CreateAppView):
                 y = top.winfo_y() + 50
                 self.generate_printable_view(submain_frame_1, width, height, x, y)
 
-            ticket_print_button.configure(command=print_ticket)
+            ticket_print_button.configure(command=lambda: self.print_ticket(ticket_data))
 
             top.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         else:
             self.toplevel_window.focus()
+
+    def print_ticket(self, data: dict):
+        """updates the ticket template information and gets it ready for printing"""
+
+        # create a dictionary of the variables to update template with and update template
+        replacements = {'[date]': f'{data["date"]}',
+                        '[product]': f"{data['product']}",
+                        '[vehicle reg]': f'{data["vehicle_id"]}',
+                        '[client]': f'{data["customer_name"]}',
+                        '[hauler]': f'{data["haulier"]}',
+                        '[destination]': f'{data["destination"]}',
+                        '[gross mass]': f'{data["final_weight"]}',
+                        '[tare mass]': f'{data["initial_weight"]}',
+                        '[net mass]': f'{data["net_weight"]}',
+                        '[driver]': f'{data["driver"]}',
+                        '[ticket number]': f'{data["id"]}',
+                        '[delivery number]': f'{data["delivery_number"]}',
+                        '[order number]': f'{data["order_number"]}'}
+
+        ticket_temp_file = 'ticket_temp.docx'
+        output_path = 'output.docx'
+        pdf_file = 'output.pdf'
+
+        func.update_template(replacements, ticket_temp_file, output_path)
+
+        # convert updated template (doc file) into pdf
+        convert(output_path, pdf_file)
+
+        # delete the doc file
+        os.remove(output_path)
+
+        # open the pdf in a default web browser
+        webbrowser.open(pdf_file)
+
+        return
+
+    def print_waybill(self, ticket, waybill, products, bad_products, approvals):
+        """updates the waybill template information and gets it ready for printing"""
+        # create a dictionary of the variables to update template with and update template
+        replacements = {'[date]': '',
+                        '[waybill number]': '',
+                        '[location]': '',
+                        '[company id]': '',
+                        '[c ref]': '',
+                        '[customer]': '',
+                        '[delivery address]': '',
+                        '[vehicle number]': '',
+                        '[transporter]': '',
+                        '[package total]': '',
+                        '[qty total]': '',
+                        '[gross mass]': '',
+                        '[damage]': '',
+                        '[shortage]': '',
+                        'products': [],
+                        '[driver]': '',
+                        '[batch]': '',
+                        '[whse tech]': '',
+                        '[receive date]': '',
+                        '[delivery date]': f"{datetime.now().strftime('%d-%m-%Y %H:%M:%S')}",
+                        '[status]': '',
+                        '[approver]': '',
+                        '[approval date]': ''}
+
+        if ticket:
+            replacements['[gross mass]'] = f'{ticket["final_weight"]}'
+        if waybill:
+            replacements['[date]'] = f'{waybill["date"]}'
+            replacements['[waybill number]'] = f"{waybill['waybill_number']}"
+            replacements['[location]'] = f"{waybill['location']}"
+            replacements['[company id]'] = f"{waybill['company_ref']}"
+            replacements['[c ref]'] = f"{waybill['customer_ref']}"
+            replacements['[customer]'] = f"{waybill['customer_name']}"
+            replacements['[delivery address]'] = f"{waybill['address']}"
+            replacements['[vehicle number]'] = f'{waybill["vehicle_id"]}'
+            replacements['[transporter]'] = f'{waybill["transporter"]}'
+        if products:
+            print(products)
+            replacements['[package total]'] = f'{sum([int(x["packages"]) for x in products])}'
+            replacements['[qty total]'] = f'{sum([int(x["quantity"]) for x in products])}'
+            replacements['products'] = products
+        if bad_products:
+            bad_products = bad_products[0]
+            replacements['[damage]'] = f'{bad_products["damaged_quantity"]}'
+            replacements['[shortage]'] = f'{bad_products["shortage_quantity"]}'
+            replacements['[batch]'] = f'{bad_products["batch_number"]}'
+        if approvals:
+            replacements['[driver]'] = f'{approvals["delivered_by"]}'
+            replacements['[whse tech]'] = f'{approvals["received_by"]}'
+            replacements['[receive date]'] = f"{approvals['received_date']}"
+            replacements['[delivery date]'] = f"{datetime.now().strftime('%d-%m-%Y %H:%M:%S')}"
+            replacements['[status]'] = f"{approvals['approval_status'].upper()}"
+            replacements['[approver]'] = f"{approvals['approver']}"
+            replacements['[approval date]'] = f"{approvals['approval_date']}"
+
+        waybill_temp_file = 'waybill_temp.docx'
+        output_path = 'output.docx'
+        pdf_file = 'output.pdf'
+
+        func.update_template(replacements, waybill_temp_file, output_path)
+
+        # convert updated template (doc file) into pdf
+        convert(output_path, pdf_file)
+
+        # delete the doc file
+        os.remove(output_path)
+
+        # open the pdf in a default web browser
+        webbrowser.open(pdf_file)
+
+        return
 
     def view_waybill_detail(self, data):
         if self.toplevel_window is None:
@@ -138,61 +252,23 @@ class WindowViews(CreateAppView):
             bad_products_info = bad_products if bad_products else []
 
             # Create the main window to fill the screen
-            w, h = self.get_screen_resolution2()
-            top_height = int(h * 0.9)
-            screen_width, screen_height = self.get_screen_resolution()  # size of A4
-            top_width = screen_width
-            top = DialogueBox(top_width, top_height, fg_color="#e3e7f0")
-
-            # Load and resize the header image
-            header_image = Image.open('assets/images/ugee_header.PNG')
-
-            new_height = 200
-
-            # Convert ImageTk.PhotoImage to CTkImage
-            header_ctk_image = ctk.CTkImage(light_image=header_image, size=(screen_width, new_height))
-
-            # Create a label to hold the header image
-            header_label = MyLabel(top, image=header_ctk_image, width=screen_width, height=new_height,
-                                   x=0, y=0).create_obj()
-            header_label.place(x=0, y=0)
-
-            # Assign the image to the label to prevent it from being garbage collected
-            header_label.image = header_ctk_image
+            screen_width, screen_height = 800, 700
+            top = DialogueBox(screen_width, screen_height, fg_color="#e3e7f0")
 
             # create a title for the waybill
-            x = header_label.position_x
-            y = int(header_label.cget("height")) + header_label.position_y + 2
+            x = 0
+            y = 0
             waybill_title_label = MyLabel(top, text="WAYBILL", font_size=18, font_weight="bold", x=x, y=y,
                                           font="TkDefaultFont", text_color="blue",
                                           fg_color="#ffffff", width=screen_width, height=25).create_obj()
             waybill_title_label.place(x=x, y=y)
 
-            # create a frame to put canvas and a scroll bar
-            h = canvas_height = (top_height - 360) * 2
-            w = screen_width * 2
-            x = waybill_title_label.position_x
-            y = waybill_title_label.position_y + int(waybill_title_label.cget("height"))
-            canvas_frame = ctk.CTkFrame(master=top, width=w, height=h)
-            canvas_frame.position_x = x
-            canvas_frame.position_y = y
-            canvas_frame.place(x=x, y=y)
-
-            # create a canvas and put content frame inside the canvas. should be scrollable
-            w = int(canvas_frame.cget("width")) - 40
-            waybill_canvas = tk.Canvas(canvas_frame, height=canvas_height, width=w)  # 1100
-            waybill_scrollbar = tk.Scrollbar(canvas_frame, orient="vertical", command=waybill_canvas.yview)
-
-            # Pack the scrollbar to the right side and expand the canvas
-            waybill_scrollbar.pack(side="right", fill="y")
-            waybill_canvas.pack(side="left", fill="both", expand=True)
-
             # create a frame to hold waybill content including products
-            content_frame = ctk.CTkFrame(master=waybill_canvas, width=screen_width)
-
-            # position the content frame inside the canvas
-            waybill_canvas.create_window((0, 0), window=content_frame, anchor="nw")
-            waybill_canvas.configure(yscrollcommand=waybill_scrollbar.set)
+            y = y + 10 + int(waybill_title_label.cget('height'))
+            content_frame = ctk.CTkFrame(master=top, width=screen_width)
+            content_frame.position_y = y
+            content_frame.position_x = x
+            content_frame.place(x=x, y=y)
 
             # create the contents inside the content frame
 
@@ -309,20 +385,19 @@ class WindowViews(CreateAppView):
             content_frame_height = y + int(transporter_value_label.cget('height'))
 
             # create products title label
-            y = y + 2 + int(transporter_value_label.cget("height"))
+            y = y + 20 + int(transporter_value_label.cget("height"))
             x = 5
             w = screen_width - 10
             products_title_label = MyLabel(content_frame, text="Products", font_size=18, font_weight="bold", x=x, y=y,
                                            font="TkDefaultFont", text_color="grey",
                                            fg_color="#ffffff", width=w, height=25).create_obj()
             products_title_label.place(x=x, y=y)
-            content_frame_height += 2 + int(products_title_label.cget('height'))
+            content_frame_height += 20 + int(products_title_label.cget('height'))
 
             # create products label
-            y = y + int(products_title_label.cget("height"))
+            y = y + int(products_title_label.cget("height")) + 20
             x = 0
             w = screen_width
-            # h = (canvas_height - y) // 2
             h = (35 + (len(products_data) * 30))  # fixed height of headers plus 30 per line of product
             products_label = MyLabel(content_frame, text="", x=x, y=y,
                                      fg_color="#ffffff", width=w, height=h).create_obj()
@@ -331,10 +406,10 @@ class WindowViews(CreateAppView):
             # create products detail
             self.create_product_detail(products_label, products_data)
 
-            content_frame_height += int(products_label.cget('height'))
+            content_frame_height += int(products_label.cget('height')) + 20
 
             # create bad products title label
-            y = y + 2 + int(products_label.cget("height"))
+            y = y + 20 + int(products_label.cget("height"))
             x = 5
             w = screen_width - 10
             bad_products_title_label = MyLabel(content_frame, text="Bad Products", font_size=18,
@@ -342,10 +417,10 @@ class WindowViews(CreateAppView):
                                                fg_color="#ffffff", width=w, height=25).create_obj()
             bad_products_title_label.place(x=x, y=y)
 
-            content_frame_height += 2 + int(bad_products_title_label.cget('height'))
+            content_frame_height += 20 + int(bad_products_title_label.cget('height'))
 
             # create bad products label
-            y = y + int(bad_products_title_label.cget("height"))
+            y = y + int(bad_products_title_label.cget("height")) + 20
             x = 0
             w = screen_width
             # h = h - int(bad_products_title_label.cget("height"))
@@ -357,7 +432,7 @@ class WindowViews(CreateAppView):
             # create bad products detail
             self.create_bad_product_detail(bad_products_label, bad_products_info)
 
-            content_frame_height += int(bad_products_label.cget('height'))
+            content_frame_height += int(bad_products_label.cget('height')) + 20
 
             # configure content frame height: company_info height, product title, product label, bad product title,
             # bad product label
@@ -366,9 +441,8 @@ class WindowViews(CreateAppView):
             # create another frame for the approvals
             w = screen_width
             h = 90  # based on values used to create approvals infor
-            d_y = canvas_frame.position_y + int(canvas_frame.cget('height'))
-            y = (d_y // 2) + 120
-            x = canvas_frame.position_x
+            y = content_frame.position_y + int(content_frame.cget('height')) + 20
+            x = content_frame.position_x
             approvals_frame = ctk.CTkFrame(master=top, width=w, height=h)
             approvals_frame.place(x=x, y=y)
 
@@ -376,18 +450,19 @@ class WindowViews(CreateAppView):
 
             # Create the action buttons frame for waybill inside submain_frame_2
             y = y + int(approvals_frame.cget("height")) + 10
-            waybill_action_buttons_frame = ctk.CTkFrame(master=top, width=w, height=40)
+            waybill_action_buttons_frame = ctk.CTkFrame(master=top, width=w, height=40, bg_color="#E3E7F0",
+                                                        fg_color="#E3E7F0")
             waybill_action_buttons_frame.place(x=x, y=y)
 
             # Create the print button for the waybill frame
             waybill_print_button = ctk.CTkButton(waybill_action_buttons_frame, text="Print Waybill", height=25,
-                                                 width=70, bg_color="#F0F0F0", fg_color="grey",
+                                                 width=70, bg_color="#E3E7F0", fg_color="grey",
                                                  text_color="#ffffff")
             waybill_print_button.grid(row=0, column=0, padx=10, pady=5)
 
             # Create button for approval of the waybill
             waybill_approval_button = ctk.CTkButton(waybill_action_buttons_frame, text="Approve Waybill", height=25,
-                                                    width=70, bg_color="#F0F0F0", fg_color="grey",
+                                                    width=70, bg_color="#E3E7F0", fg_color="grey",
                                                     text_color="#ffffff")
             waybill_approval_button.grid(row=0, column=1, padx=10, pady=5)
 
@@ -396,7 +471,7 @@ class WindowViews(CreateAppView):
 
             # Create button for waybill data replacement
             replace_button = ctk.CTkButton(waybill_action_buttons_frame, text="Replace Waybill", height=25,
-                                           width=70, bg_color="#F0F0F0", fg_color="grey",
+                                           width=70, bg_color="#E3E7F0", fg_color="grey",
                                            text_color="#ffffff")
             replace_button.grid(row=0, column=2, padx=10, pady=5)
             replace_button.configure(command=lambda: self.thread_request(self.edit_waybill, data, waybill))
@@ -414,9 +489,11 @@ class WindowViews(CreateAppView):
                 y = top.winfo_rooty()
                 width = top.winfo_width()
                 height = top.winfo_height() - exclude
+                print(f"x: {x}, y: {y}, w: {width}, h: {height}")
                 self.generate_printable_view(top, width, height, x, y)
 
-            waybill_print_button.configure(command=print_waybill)
+            waybill_print_button.configure(
+                command=lambda: self.print_waybill(ticket, waybill, products, bad_products, approvals_data))
 
             self.toplevel_window = top
 

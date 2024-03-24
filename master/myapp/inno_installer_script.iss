@@ -10,15 +10,15 @@
 AppName={#MyAppName} 
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
-DefaultDirName={commonpf}\{#MyAppName}
+DefaultDirName={commonappdata}\{#MyAppName}
 OutputDir=Output
 OutputBaseFilename={#MyAppName}
 Compression=lzma2/max
 SolidCompression=yes
 
 [Files]
-Source: "build\pikanto\{#MyAppExeName}"; DestDir: "{app}"
-Source: "build\pikanto\*"; DestDir: "{app}"; Flags: recursesubdirs; Excludes: {#MyAppExeName}
+Source: "build\master\{#MyAppExeName}"; DestDir: "{app}"
+Source: "build\master\*"; DestDir: "{app}"; Flags: recursesubdirs; Excludes: {#MyAppExeName}
 
 [Icons]
 Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\assets\icons\app_icon.ico"

@@ -58,6 +58,9 @@ class Pikanto(WindowViews):
         if hauliers is None or len(hauliers) == 0:
             self.update_status('No haulier record found in the database')
             return
+        if self.weight_data is None:
+            self.update_status('No weight detected from the weight scale.')
+            return
 
         customer_list = {}
         for x in customers:
@@ -244,7 +247,7 @@ class Pikanto(WindowViews):
         if record:
             weight_1.insert(0, "{}{}    |  {}".format(record.initial_weight, self.unit, record.initial_time))
         else:
-            weight_1.insert(0, self.weight_data)
+            weight_1.insert(0, f'{self.weight_data}')
         weight_1.configure(state='disabled')
         weight_1.position_x, weight_1.position_y = 10, 5
         weight_1.place(x=weight_1.position_x, y=weight_1.position_y)
@@ -263,10 +266,10 @@ class Pikanto(WindowViews):
         weight_3 = ctk.CTkEntry(div6, placeholder_text='Net weight appears here', width=d_w, height=d_h)
         # insert the value here
         if record:
-            if self.weight_data > int(record.initial_weight):
+            if self.conv(self.weight_data) > int(record.initial_weight):
                 difference = self.weight_data - int(record.initial_weight)
             else:
-                difference = int(record.initial_weight) - self.weight_data
+                difference = int(record.initial_weight) - self.conv(self.weight_data)
             weight_3.insert(0, difference)
         weight_3.configure(state='disabled')
         weight_3.position_x = weight_2.position_x + int(weight_2.cget('width')) + 5

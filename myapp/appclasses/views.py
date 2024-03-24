@@ -41,10 +41,16 @@ class CreateAppView(ctk.CTk):
         self.w, self.h = width, height
         position_x = (self.winfo_screenwidth() // 2) - (width // 2)
         position_y = (self.winfo_screenheight() // 2) - (height // 2)
-        self.geometry("{}x{}+{}+{}".format(width, height, position_x * 2, position_y))
+        self.geometry("{}x{}+{}+{}".format(width, height, position_x, position_y))
         self.iconbitmap('assets/icons/app_icon.ico')
         self.title('Pikanto - logistics weight station data manager')
         self.configure_app_settings()
+
+    def conv(self, st):
+        try:
+            return int(st)
+        except ValueError: #If you get a ValueError
+            return float(st)
 
     def create_base_view(self):
         """creates the different widgets found on the app as the main window opens"""
@@ -347,12 +353,12 @@ class CreateAppView(ctk.CTk):
     def clear_data(self):
         """Clears the current data on the data screen and replaces it with 0.0"""
         self.weight_data = None
-        self.display_data("0.0")
+        self.display_data(f"{float(0)}")
         self.update()
 
     def display_data(self, data=None):
         """Displays data on the data_display label"""
-        self.weight_data = data
+        #self.weight_data = data
 
         def load_data():
             self.data_display_label.configure(text="{} {}".format(self.weight_data, self.unit))
