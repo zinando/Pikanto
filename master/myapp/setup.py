@@ -3,23 +3,27 @@ from cx_Freeze import setup, Executable
 
 base = None
 
-if sys.platform == 'win32':
-    base = 'Win32GUI'
+#if sys.platform == 'win32':
+    #base = 'Win32GUI'
 
 options = {
     'build_exe': {
-        "packages": ["tkinter", "customtkinter", "validators", "img2pdf", "reportlab", "fpdf"],
-        'include_files': ['assets', 'appclasses', "virtual/Lib/site-packages/validators", 
-        'helpers', 'static', 'main.py', 'app_settings.json', 'flask_app.py', 'server', 
-        'instance', "ticket_temp.docx", "waybill_temp.docx",
-        "virtual/Lib/site-packages/img2pdf.py", "virtual/Lib/site-packages/reportlab", 
-        "virtual/Lib/site-packages/fpdf","virtual/Lib/site-packages/jp2.py",
-        "virtual/Lib/site-packages/psutil"],  # Add any additional files or data needed here
+        "packages": ["tkinter", "customtkinter", "validators", "img2pdf", "reportlab", "fpdf", "sqlite"],
+        "includes": [],
+        'include_files': ['assets', 'static', 'app_settings.json',
+        "ticket_temp.docx", "waybill_temp.docx"]
+        # Add the ffg to the build folder:
+        # lib/server/config.py
+        # server/instance/email_template.txt
+        # var/server.extensions-instance/pikanto_db.sqlite
+
     },
 }
 
 executables = [
     Executable('welcome.py', base=base, icon='assets/icons/app_icon.ico', target_name='PikantoMaster.exe'),  # Replace 'your_main_script.py' with your main script
+    Executable('main.py', base=base, icon='assets/icons/app_icon.ico', target_name='main.exe'),
+    Executable('flask_app.py', base=base, icon='assets/icons/app_icon.ico', target_name='flask_app.exe'),    
 ]
 
 setup(

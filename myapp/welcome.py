@@ -30,8 +30,7 @@ class Welcome(ctk.CTk):
         position_x = (self.winfo_screenwidth() // 2) - (width // 2)
         position_y = (self.winfo_screenheight() // 2) - (height // 2)
         self.geometry("{}x{}+{}+{}".format(width, height, position_x, position_y))
-        self.server_url = self.get_server_url()
-        self.check_flask_server()
+        self.server_url = self.get_server_url()        
 
         # calculate image size such that it leaves 35 spaces at side and top
         img_width = width - 70
@@ -98,6 +97,7 @@ class Welcome(ctk.CTk):
                                             text_color="#ffbf00", height=h, width=w,
                                             x=x, y=y).create_obj()
         self.query_status_display.place(x=x, y=y)
+        self.check_flask_server()
 
     def check_flask_server(self):
         if self.server_url:
@@ -105,10 +105,12 @@ class Welcome(ctk.CTk):
                 # Try making a request to the local Flask server
                 response = requests.get(self.server_url)
                 if response.status_code == 200:
-                    pass
+                    self.display_error_message("Flask server is already running.")
             except requests.ConnectionError:
-                # Start the Flask server
                 self.show_server_warning()
+        else:
+            self.display_error_message("Please set server url.")
+            
         return
 
     def show_server_warning(self):
@@ -386,8 +388,22 @@ class Welcome(ctk.CTk):
             return
 
         self.server_url = self.url_entry.get()
-
         mr = {}
+        default = {'port': "COM2", 'baudrate': 9600, 'parity': 'N',
+                    'stopbits':1, 'bytesize':8, 'server_url': self.server_url,
+                    'ngrok_url': None, 'unit': 'Kg', 'waybill_tech_email': ''}
+
+        # get previous settings data
+        prev = func.read_app_settings()
+        if prev['status'] != 1:
+            # initialize all necessary params with default value
+            mr = default
+        elif prev['status'] == 1:
+            # check if any key in the default dict is missing in the settings data
+            for x in default.keys():
+                if x not in prev['data'].keys():
+                    mr[x] = default.get(x)
+        
         mr['server_url'] = self.server_url
 
         func.store_app_settings(mr)
@@ -405,9 +421,19 @@ class Welcome(ctk.CTk):
 
     def load_main_window(self):
         """This will load the main app window and destroy the welcome page"""
-        self.withdraw()
-        os.system(f"python main.py {self.user_info['user_id']}")
-        self.destroy()
+        
+        # check if the packaged app is available otherwise open the unpackaged app
+        if os.path.isfile('main.py'):
+            self.withdraw()
+            os.system(f"python main.py {self.user_info['user_id']}")
+            self.destroy()
+        elif os.path.isfile('main.exe'):
+            self.withdraw()
+            os.system(f"main.exe {self.user_info['user_id']}")
+            self.destroy()
+        else:
+            self.display_error_message('main application files not found.')
+        return
 
     def show_progress(self):
         """This will run the progress bar when counter is equal to or less than 10"""

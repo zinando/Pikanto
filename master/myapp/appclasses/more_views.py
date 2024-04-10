@@ -2173,7 +2173,7 @@ class WindowViews(CreateAppView):
         body += "NOTE: You will be required to provide your Pikanto app user credentials in order to be able to "
         body += "append your approval.\n\n"
         body += f"From mobile device, use this link: https://roughy-topical-easily.ngrok-free.app/approve?email={email}&wtlog_id={itemm.id}\n\n"
-        body += f"From PC use:  http://localhost:8088/approve?email={email}&wtlog_id={itemm.id}"
+        body += f"From PC use:  {self.server_url}/approve?email={email}&wtlog_id={itemm.id}"
 
         return body, files
 

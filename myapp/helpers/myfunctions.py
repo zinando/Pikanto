@@ -164,53 +164,11 @@ def addspace(obj_position, obj_size):
     return obj_position + obj_size
 
 
-def get_massxxx(scale_settings=None):
-    # ser = serial.Serial(port='/dev/ttyS0', ## if using Linux serial
-    print(scale_settings)
-    if scale_settings:
-        port = scale_settings['port']
-        baudrate = scale_settings['baudrate']
-        parity = scale_settings['parity']
-        stopbits = scale_settings['stopbits']
-        bytesize = scale_settings['bytesize']
-    else:
-        port = "COM2"
-        baudrate = 9600
-        parity = serial.PARITY_NONE
-        stopbits = serial.STOPBITS_ONE
-        bytesize = serial.EIGHTBITS
-
-    ser = serial.Serial(port,
-                        baudrate=baudrate,
-                        parity=parity,
-                        stopbits=stopbits,
-                        bytesize=bytesize
-                        )
-
-    if not ser.isOpen():
-        ser.open()
-
-    ser.write(b'\nSI\n')
-    time.sleep(1)  # give moment for balance to settle
-
-    value = ser.read(ser.in_waiting)
-
-    value = decode_byte(value)
-
-    value = digits_between_sequences(value, str(32))
-
-    if ser.isOpen():
-        ser.close()
-
-    return int(value)
-
-
 def is_ngrok_running():
     for proc in psutil.process_iter(['pid', 'name']):
         if 'ngrok' in proc.info['name']:
             return True
     return False
-
 
 def get_mass(scale_settings=None):
     result = {'status': 2, 'data': None, 'message': None}
@@ -398,11 +356,10 @@ def read_app_settings():
         data = None
         status = 2
         message = f"File '{file_path}' not found."
-        print(message)
+        
     except json.JSONDecodeError:
         data = None
         status = 2
         message = f"Error decoding JSON from '{file_path}'. Check if the file contains valid JSON."
-        print(message)
-
+        
     return {'status': status, 'message': message, 'data': data}

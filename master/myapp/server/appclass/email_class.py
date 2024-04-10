@@ -64,7 +64,10 @@ email_template = '''
         <div class="row">
             <!-- Logo -->
             <div class="col-md-12 text-center">
-                <img src="https://i.imgur.com/iP3xtXj.png" alt="Company Logo" class="img-fluid">
+                <img src="static/assets/images/logo/ugee_header.png" alt="Company Logo" class="img-fluid">
+            </div>
+            <div class="col-md-12 text-center">
+                <hr style="boarder:  2px solid green"/>
             </div>
         </div>
 
@@ -72,6 +75,9 @@ email_template = '''
             <div class="col-md-12">
                 <p class="text-center">You have been requested to review the following information and to append your
                     approval of the waybill by providing your Pikanto app password using the below form.</p>
+            </div>
+            <div class="col-md-12 text-center">
+                <hr style="boarder:  2px solid green"/>
             </div>
         </div>
 

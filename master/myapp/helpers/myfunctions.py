@@ -377,11 +377,10 @@ def store_app_settings(settings):
 
         message = f"Settings saved to '{file_path}'"
         status = 1
-        print(message)
+        
     except Exception as e:
         message = f"Error writing settings to '{file_path}': {e}"
-        status = 2
-        print(message)
+        status = 2        
 
     return {'status': status, 'message': message, 'data': None}
 
@@ -398,11 +397,11 @@ def read_app_settings():
         data = None
         status = 2
         message = f"File '{file_path}' not found."
-        print(message)
+        
     except json.JSONDecodeError:
         data = None
         status = 2
         message = f"Error decoding JSON from '{file_path}'. Check if the file contains valid JSON."
-        print(message)
+        
 
     return {'status': status, 'message': message, 'data': data}

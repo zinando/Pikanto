@@ -343,7 +343,7 @@ class CreateAppView(ctk.CTk):
 
         response = func.read_app_settings()
         if response['status'] == 1:
-            if 'port' in response['data']:
+            if 'port' in response['data'] or 'server_url' in response['data']:
                 mr = response['data']
 
         return mr

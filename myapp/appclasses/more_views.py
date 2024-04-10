@@ -1947,7 +1947,7 @@ class WindowViews(CreateAppView):
         sends approval request to selected approval.
         """
         # check if user is admin
-        if self.current_user.admin_type != "admin":
+        if self.current_user.admin_type != "admin" and self.current_user.admin_type != "super":
             func.notify_user("You are not authorized to perform this action")
             return
 
@@ -1981,7 +1981,7 @@ class WindowViews(CreateAppView):
             def send_request():
                 """
                 Extracts approval information from users list and sends approval request to them
-                """
+                """ 
                 approver_info = [x for x in approvals if x['full_name'] == approver_entry.get()][0]  # dict data
                 customer_window.destroy()
 
@@ -2174,7 +2174,7 @@ class WindowViews(CreateAppView):
         body += "NOTE: You will be required to provide your Pikanto app user credentials in order to be able to "
         body += "append your approval.\n\n"
         body += f"From mobile device, use this link: https://roughy-topical-easily.ngrok-free.app/approve?email={email}&wtlog_id={itemm.id}\n\n"
-        body += f"From PC use:  http://localhost:8088/approve?email={email}&wtlog_id={itemm.id}"
+        body += f"From PC use:  {self.server_url}/approve?email={email}&wtlog_id={itemm.id}"
 
         return body, files
 

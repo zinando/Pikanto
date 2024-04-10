@@ -5,7 +5,7 @@
     "stopbits": 1,
     "bytesize": 8,
     "server_url": "http://localhost:8088",
-    "ngrok_url": "https://roughy-topical-easily.ngrok-free.app",
-    "waybill_tech_email": "samuel.n@ugeechemicals.com",
-    "unit": "Kg"
+    "ngrok_url": null,
+    "unit": "Kg",
+    "waybill_tech_email": ""
 }
